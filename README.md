@@ -90,9 +90,22 @@ Electron 作为运行容器，采用 `nodeIntegration:false`、`contextIsolation
 
 本次能在容器中运行 Node.js 自动测试和语法检查，但此环境无法下载 Windows Electron 二进制，也没有 Windows GUI。**“EXE 正常运行、置顶、透明、托盘、鼠标穿透”尚未在 Windows 真机验收**，应在你电脑上执行 `start-windows.bat` 验证。官方动画的浏览器效果可先在上游原版演示站或 `QuickPreview.html` 检查。
 
-## 不想安装 Node.js？也可用 GitHub Actions 打包
+## 下载 Windows 版本（GitHub Releases）
 
-源码里已经包含 `.github/workflows/windows-portable.yml`。将本项目完整上传到自己新建的 GitHub 仓库（根目录），打开 **Actions → Build HachiOrb Windows Portable → Run workflow**。打包成功后从 Actions 结果中下载 `HachiOrb-Windows-Portable`，解压里面的 ZIP，再双击 `HachiOrb.exe`。这条路线不需要在本机安装 Node.js，但需要 GitHub 仓库及可用的 Actions 额度，而且当前工作流尚未实际跑过。
+- **正式下载入口：** https://github.com/AshinTop/hachiorb-desktop/releases
+- 每个版本上传 `HachiOrb-Windows-Portable.zip` 和 SHA-256 校验文件。
+- 解压 **完整 ZIP**，运行解压文件夹中的 `HachiOrb.exe`；不要单独复制 EXE。
+- 仓库是 **Private**：只有获得仓库读取权限的账号可以下载 Releases。
+- 当前是未签名个人构建；Windows 可能提示未知发布者。
 
+### 发布新版（手动，停止 push 自动构建）
 
-> 代码仓库：`https://github.com/AshinTop/hachiorb-desktop`。
+之前的 Windows Actions 由于 Artifact 存储额度不足，打包成功但上传失败。现在工作流不再监听每次 push，**只保留手动触发**：GitHub 仓库 → Actions → **Publish HachiOrb Windows Release** → **Run workflow** → 输入 `v1.1.0` → Run workflow。它会测试、构建 Windows x64 便携包，然后**直接上传到 GitHub Releases**，不再调用 `actions/upload-artifact`。
+
+发布成功后到 [Releases](https://github.com/AshinTop/hachiorb-desktop/releases) 下载。发布流程使用 GitHub Actions runner 计算/构建，因此仍需有可用的 Actions 运行权限和分钟额度；只是**不再使用 Actions Artifact 存储**。默认以 pre-release 标识，直到 Windows 真机验收。
+
+### 如果你要彻底关闭全部 GitHub Actions
+
+GitHub 仓库 → Settings → Actions → General → Actions permissions → Disable actions → Save。完全停用后，**上述云端编译/发布流程也无法运行**，但已创建的 Releases 仍可供下载。之后可在你自己的 Windows 上运行 `build-windows.bat` 生成 `release/HachiOrb-win32-x64`，手动压缩后从 GitHub 网页 Create a new release 上传 ZIP。不要将 GitHub 自动生成的 Source code ZIP 误当作可执行程序。
+
+> HachiOrb GitHub 仓库：https://github.com/AshinTop/hachiorb-desktop
