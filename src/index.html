@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; connect-src 'none'; base-uri 'none'" />
+  <title>HachiOrb · Grok Ball</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="orb" role="button" tabindex="0" aria-label="AI 动态桌宠，单击旋转，拖动移动，右键设置">
+    <div id="loading" aria-live="polite">LOADING</div>
+  </div>
+  <div id="label" aria-live="polite" hidden></div>
+  <script src="../vendor/grok-ball.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

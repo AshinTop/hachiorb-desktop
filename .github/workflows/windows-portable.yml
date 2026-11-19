@@ -1,0 +1,42 @@
+name: Build HachiOrb Windows Portable
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'integrations/**'
+      - 'INTEGRATIONS.md'
+      - 'setup-agent-hooks-windows.bat'
+      - 'scripts/**'
+      - 'vendor/README.md'
+      - 'assets/**'
+      - 'package.json'
+      - '.github/workflows/windows-portable.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fetch verified original Grok Ball
+        run: node scripts/bootstrap.cjs
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Test bridge
+        run: npm test
+      - name: Package Windows portable
+        run: npm run pack:win
+      - name: Zip whole portable application
+        shell: powershell
+        run: Compress-Archive -Path release/HachiOrb-win32-x64/* -DestinationPath HachiOrb-Windows-Portable.zip
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HachiOrb-Windows-Portable
+          path: HachiOrb-Windows-Portable.zip
+          retention-days: 14
