@@ -97,7 +97,7 @@ node .\integrations\gbot-send.cjs Researcher "总结项目进度"
 HachiOrb 托盘 → 复制 AI 状态接口地址（默认 `http://127.0.0.1:4173/api/state`，如被占用会改用 4174/4175）。
 
 ```powershell
-Invoke-RestMethod -Uri 'http://127.0.0.1:4173/api/state' -Method Post -ContentType 'application/json' -Body '{"state":"working","agent":"custom","task":"任务进行中"}'
+.\examples\send-status.ps1 -Port 4173 -State working -Agent custom -Task '任务进行中'
 ```
 
 若端口不同，替换为托盘显示的真实端口。自带 Hook 自动尝试 4173、4174、4175。
@@ -146,7 +146,7 @@ Windows Release 便携版已经增加外置 BAT、PowerShell 和 Node.js 安装�
 例如在 Windows PowerShell 中模拟 WorkBuddy 等待用户回答：
 
 ```powershell
-Invoke-RestMethod -Uri 'http://127.0.0.1:4173/api/state' -Method Post -ContentType 'application/json' -Body '{"agent":"workbuddy","state":"idle","emotionId":"35","attention":"input","task":"WorkBuddy 等待回答"}'
+.\examples\send-status.ps1 -Port 4173 -Agent workbuddy -State idle -EmotionId 35 -Attention input -Task 'WorkBuddy 等待回答'
 ```
 
 若端口被占用，以托盘显示的实际端口为准。

@@ -24,7 +24,17 @@ test('Installer safeguards existing Codex and Cursor configuration',()=>{
 test('Hook handler uses loopback only and returns continue JSON to Cursor',()=>{
  const ps=file('integrations/agent-status.ps1');
  assert.match(ps,/127\.0\.0\.1:/);
+ assert.match(ps,/\$request\.Proxy\s*=\s*\$null/i);
+ assert.doesNotMatch(ps,/Invoke-RestMethod/i);
  assert.match(ps,/\{"continue":true\}/);
  assert.doesNotMatch(ps,/last-assistant-message|input-messages|\.text\b/);
  for(const ev of ['beforeSubmitPrompt','afterAgentThought','afterFileEdit','stop','sessionEnd','agent-turn-complete']) assert.ok(ps.includes(ev),ev);
+});
+test('Windows PowerShell connection helpers bypass configured localhost proxies',()=>{
+ for(const relative of ['scripts/test-agent-connection.ps1','examples/send-status.ps1']){
+  const ps=file(relative);
+  assert.match(ps,/\$request\.Proxy\s*=\s*\$null/i,relative);
+  assert.doesNotMatch(ps,/Invoke-RestMethod/i,relative);
+ }
+ assert.match(file('src/main.cjs'),/\$q\.Proxy=\$null/);
 });

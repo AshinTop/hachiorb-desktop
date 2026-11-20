@@ -13,6 +13,7 @@ const files=[
  'scripts/codex-notify-config.cjs',
  'scripts/setup-agent-hooks.ps1',
  'scripts/test-agent-connection.ps1',
+ 'examples/send-status.ps1',
  'integrations/codex-notify-dispatcher.cjs',
  'integrations/codex-notify-dispatcher.ps1',
  'integrations/codex-notify.cjs',

@@ -80,7 +80,7 @@ function makeMenu(){
   {type:'separator'},
   {label:api?`本地状态接口：127.0.0.1:${api}`:'状态服务初始化中',enabled:false},
   {label:'复制 AI 状态接口地址',click:()=>clipboard.writeText(`http://127.0.0.1:${api}/api/state`)},
-  {label:'复制测试命令（PowerShell）',click:()=>clipboard.writeText(`Invoke-RestMethod -Uri 'http://127.0.0.1:${api}/api/state' -Method Post -ContentType 'application/json' -Body '{"state":"thinking","task":"AI 正在思考","agent":"manual"}'`)},
+  {label:'复制测试命令（PowerShell）',click:()=>clipboard.writeText(`$u='http://127.0.0.1:${api}/api/state';$b='{"state":"thinking","task":"AI 正在思考","agent":"manual"}';$d=[Text.Encoding]::UTF8.GetBytes($b);$q=[Net.HttpWebRequest]::Create($u);$q.Proxy=$null;$q.Method='POST';$q.ContentType='application/json';$q.Timeout=2000;$q.ReadWriteTimeout=2000;$q.ContentLength=$d.Length;$s=$q.GetRequestStream();$s.Write($d,0,$d.Length);$s.Close();$q.GetResponse().Close()`)},
   {label:'开机启动（仅打包版）',type:'checkbox',enabled:app.isPackaged,checked:settings.autostart,click:i=>{
     settings.autostart=i.checked;
     app.setLoginItemSettings({openAtLogin:settings.autostart,path:process.execPath});applySettings();

@@ -29,11 +29,18 @@ test('Cursor event classification respects aborted/error/completed',()=>{
 });
 test('Loopback sender finds ephemeral bridge and does not transmit secrets',async()=>{
  const events=[];const server=createBridge(s=>events.push(s));const port=await server.listen(0);
+ const previousHttpProxy=process.env.HTTP_PROXY,previousLowerHttpProxy=process.env.http_proxy;
  try{
+  // Node's built-in http client must keep localhost traffic direct even when a desktop proxy is configured.
+  process.env.HTTP_PROXY='http://127.0.0.1:10808';process.env.http_proxy='http://127.0.0.1:10808';
   const s=codexEvent({type:'agent-turn-complete',cwd:'C:/projects/sample', 'last-assistant-message':'SECRET'});
   assert.equal(await send(s,{ports:[port]}),true);
   assert.equal(events.length,1);assert.equal(events[0].task.includes('SECRET'),false);
- }finally{await server.close()}
+ }finally{
+  if(previousHttpProxy===undefined)delete process.env.HTTP_PROXY;else process.env.HTTP_PROXY=previousHttpProxy;
+  if(previousLowerHttpProxy===undefined)delete process.env.http_proxy;else process.env.http_proxy=previousLowerHttpProxy;
+  await server.close();
+ }
 });
 test('Cursor hook returns valid JSON response even when local desktop is offline',async()=>{
  const result=await run('integrations/cursor-hook.cjs',['beforeSubmitPrompt'],JSON.stringify({prompt:'classified private info'}));
