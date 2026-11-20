@@ -5,7 +5,91 @@
 const fs=require('node:fs');
 const path=require('node:path');
 const os=require('node:os');
+const crypto=require('node:crypto');
 const {installCodex,stage,BASE_DIR}=require('./codex-notify-config.cjs');
+
+const CODEX_HOOK_EVENTS=Object.freeze(['UserPromptSubmit','PreToolUse','PostToolUse','PermissionRequest','SubagentStart','SubagentStop','Stop','Interrupt','SessionEnd']);
+function quoteCommandArg(value){
+ const text=String(value);
+ if(text.includes('"'))throw Error('Codex hook command path contains an unsupported quote');
+ return `"${text}"`;
+}
+function configDisablesHooks(file){
+ if(!fs.existsSync(file))return false;
+ let section='';
+ for(const raw of fs.readFileSync(file,'utf8').split(/\r?\n/)){
+  const line=raw.replace(/#.*$/,'').trim();
+  const table=/^\[\[?\s*([^\]]+?)\s*\]\]?$/.exec(line);
+  if(table){section=table[1].trim();if(/^hooks(?:\.|$)/i.test(section))throw Error('Codex config.toml already declares hooks; merge HachiOrb into that hooks source to avoid duplicate hook layers');continue;}
+  if(section.toLowerCase()==='features'&&/^hooks\s*=\s*false(?:\s|$)/i.test(line))return true;
+  if(section.toLowerCase()==='features'&&/^codex_hooks\s*=\s*false(?:\s|$)/i.test(line))return true;
+ }
+ return false;
+}
+function backupFile(file){
+ if(!fs.existsSync(file))return null;
+ const dest=file+'.hachiorb-backup-'+new Date().toISOString().replace(/[-:.TZ]/g,'')+'-'+crypto.randomBytes(3).toString('hex');
+ fs.copyFileSync(file,dest);return dest;
+}
+function atomicWrite(file,content){
+ fs.mkdirSync(path.dirname(file),{recursive:true});
+ const temp=file+'.hachiorb-tmp-'+crypto.randomBytes(5).toString('hex');
+ try{fs.writeFileSync(temp,content,{mode:0o600,flag:'wx'});fs.renameSync(temp,file)}finally{if(fs.existsSync(temp))fs.unlinkSync(temp)}
+}
+
+function setupCodexHooks({home=os.homedir(),codexHome=process.env.CODEX_HOME,root=path.resolve(__dirname,'..'),stableDir=BASE_DIR,nodeExe=process.execPath}={}){
+ const codexDir=codexHome||path.join(home,'.codex');
+ const file=path.join(codexDir,'hooks.json');
+ if(configDisablesHooks(path.join(codexDir,'config.toml')))throw Error('Codex lifecycle hooks are disabled in config.toml; no hooks were installed');
+ let data={hooks:{}};
+ if(fs.existsSync(file)){
+  try{data=JSON.parse(fs.readFileSync(file,'utf8'))}catch(e){throw Error('Existing Codex hooks.json is invalid JSON; unchanged: '+e.message)}
+ }
+ if(!data||typeof data!=='object'||Array.isArray(data))throw Error('Codex hooks.json must be a JSON object; unchanged');
+ if(data.hooks!=null&&(typeof data.hooks!=='object'||Array.isArray(data.hooks)))throw Error('Codex hooks must be an object; unchanged');
+ if(!data.hooks)data.hooks={};
+ for(const event of CODEX_HOOK_EVENTS){
+  const groups=data.hooks[event];
+  if(groups!=null&&!Array.isArray(groups))throw Error('Codex '+event+' hook groups must be an array; unchanged');
+  for(const group of groups||[]){
+   if(!group||typeof group!=='object'||Array.isArray(group)||!Array.isArray(group.hooks))throw Error('Codex '+event+' contains an unsupported hook group; unchanged');
+   if(group.hooks.some(hook=>!hook||typeof hook!=='object'||Array.isArray(hook)))throw Error('Codex '+event+' contains an unsupported hook handler; unchanged');
+  }
+ }
+ stage(root,stableDir);
+ const script=path.join(stableDir,'codex-hook.cjs');
+ const command=`${quoteCommandArg(nodeExe)} ${quoteCommandArg(script)}`;
+ let changed=false;
+ for(const event of CODEX_HOOK_EVENTS){
+  const hookCommand=`${command} ${event}`;
+  const timeout=event==='Interrupt'||event==='SessionEnd'?3:5;
+  const desired={type:'command',command:hookCommand,commandWindows:hookCommand,timeout};
+  if(event!=='Interrupt'&&event!=='SessionEnd')desired.async=true;
+  const entries=data.hooks[event]||[];
+  const groups=[];let found=false;
+  for(const group of entries){
+   const kept=[];
+   for(const hook of group.hooks){
+    const ours=hook.type==='command'&&typeof hook.command==='string'&&(
+     /hachiorb[^\r\n]*codex-hook\.cjs/i.test(hook.command)||
+     (/hachiorb[^\r\n]*agent-status\.ps1/i.test(hook.command)&&hook.command.includes(`codex:${event}`))
+    );
+    if(!ours){kept.push(hook);continue;}
+    const same=Object.keys(desired).every(key=>hook[key]===desired[key])&&Object.keys(hook).every(key=>Object.hasOwn(desired,key));
+    if(same&&!found){kept.push(hook);found=true;}else changed=true;
+   }
+   if(kept.length)groups.push({...group,hooks:kept});
+  }
+  if(!found){
+   groups.push({hooks:[desired]});changed=true;
+  }
+  if(groups.length)data.hooks[event]=groups;else delete data.hooks[event];
+ }
+ if(!changed)return {status:'already-installed',file};
+ const backup=backupFile(file);
+ atomicWrite(file,JSON.stringify(data,null,2)+'\n');
+ return {status:'installed',file,backup};
+}
 
 function setupCursor({home=os.homedir(),root=path.resolve(__dirname,'..'),stableDir=BASE_DIR}={}) {
  const file=path.join(home,'.cursor','hooks.json');let data={version:1,hooks:{}};
@@ -79,8 +163,9 @@ function setupAll(args=new Set(process.argv.slice(2))){
    const result=installCodex();
    console.log('[OK] Codex notify dispatcher:',result.status);
    if(result.original)console.log('     Original notify preserved and forwarded first.');
-   console.log('     Codex emits agent-turn-complete only.');
   }catch(e){errors++;console.error('[ERROR] Codex config unchanged:',e.message);}
+  try{const result=setupCodexHooks();console.log('[OK] Codex lifecycle hooks:',result.status);}
+  catch(e){errors++;console.error('[ERROR] Codex lifecycle hooks unchanged:',e.message);}
  }
  if(wantsAll||args.has('--cursor')){
   try{const result=setupCursor();console.log('[OK] Cursor hooks:',result.status)}
@@ -93,4 +178,4 @@ function setupAll(args=new Set(process.argv.slice(2))){
  return errors===0?0:1;
 }
 if(require.main===module)process.exitCode=setupAll();
-module.exports={setupCursor,setupWorkBuddy,setupAll,WORKBUDDY_EVENTS};
+module.exports={setupCodexHooks,setupCursor,setupWorkBuddy,setupAll,CODEX_HOOK_EVENTS,WORKBUDDY_EVENTS};

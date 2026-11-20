@@ -9,15 +9,16 @@
 它只修改当前 Windows 用户：
 
 - `%USERPROFILE%\.codex\config.toml`：若已有 `notify`，先备份并安全解析，再改为 **复合通知器**；原命令存入 `%LOCALAPPDATA%\HachiOrb\hooks\codex-original-notify.json`，触发时按顺序执行 **原通知 → HachiOrb**。已有复合通知器则不重复包装。
+- `%USERPROFILE%\.codex\hooks.json`（或 `%CODEX_HOME%\hooks.json`）：合并 Codex 生命周期 Hook，保留其他 Hook，并在修改前备份。提示词、工具参数和回复内容不会转发给 HachiOrb。
 - `%USERPROFILE%\.cursor\hooks.json`：保留原来的其他 Hook，去重添加五种观察事件；修改前创建独立备份。
 
 配置后重启/重开相关 Codex、Cursor Agent 会话，进行一次测试。不会自动向其他项目提交代码。关闭 HachiOrb 后 Hook 会快速跳过，不会向远程服务器发送状态。
 
 ### Codex
 
-Codex 当前官方 `notify` 仅在 `agent-turn-complete` 时调用外部命令，因此 **自动获得的是每轮任务完成状态**，不能凭这个接口判断工作中/思考中。请勿把桌宠始终显示「待机」误认为连接失败。
+`notify` 仍仅在 `agent-turn-complete` 时触发；实时状态由 Codex 官方生命周期 Hook 提供：提交提示词时显示思考中，调用工具或子代理时显示处理中，等待授权时显示提醒，回合结束或中断时更新状态。Hook 只根据固定事件名发送状态，不读取或转发 Hook JSON 中的提示词和工具内容。
 
-如希望 CLI **进程级** `thinking / working / done / error`，可显式通过自定义 wrapper 启动 Codex；不过 interactive CLI 退出不代表每轮都完成，推荐直接用官方 `notify`。
+Codex 会要求你审核并信任新 Hook 后才运行。在 Codex 桌面端打开 **Settings > Hooks**（或选择 **Review hooks**）审核 HachiOrb Hook；CLI 可用 `/hooks`。安装器不会替你自动信任。官方说明：[Codex Hooks](https://learn.chatgpt.com/docs/hooks)。
 
 官方文档：https://learn.chatgpt.com/docs/config-file/config-advanced#notifications
 
@@ -106,7 +107,7 @@ HachiOrb 托盘 → 复制 AI 状态接口地址（默认 `http://127.0.0.1:4173
 
 - 本地协议和安装器：已写自动测试；**Windows 真机、真实 Codex/Cursor/Grok Bot 账户的事件触发仍需你本机验收**。
 - Cursor Hook 只在它支持的 Agent 事件下触发；不承诺读取普通编辑器光标、Tab 自动补全或云端 Bot 状态。
-- Codex `notify` 只承诺 `agent-turn-complete`，不猜测任务是否失败；默认标记 `done` 仅表示一个 turn 已结束。
+- Codex 的 `notify` 只承诺 `agent-turn-complete`；实时状态使用生命周期 Hook。Hook 定义变更后需在 Codex 中重新审核/信任。
 - Grok Bot 只提供主动发状态/包装器；**完整被动自动监控尚未支持**。
 - Hook 不包含密钥，不发公网数据。localhost 端口只绑定到环回网卡。项目不主动开启云控制、CDP 调试或运行会话外部指令。
 
@@ -117,9 +118,9 @@ HachiOrb 托盘 → 复制 AI 状态接口地址（默认 `http://127.0.0.1:4173
 - 先启动 `HachiOrb.exe`，右键托盘确认本地服务已启动。
 - 双击 `test-agent-connection-windows.bat`，验证桌宠能收到模拟思考状态。
 - 双击 `setup-agent-hooks-windows.bat`，查看两个独立的 `[OK]` / `[SKIP]` / `[ERROR]` 结果。
-- 安装器将 Hook 处理程序复制到 `%LOCALAPPDATA%\HachiOrb\hooks\agent-status.ps1`，保证你之后移动解压文件夹时旧 Hook 不失效；配置文件在 `%USERPROFILE%\.codex\config.toml`、`%USERPROFILE%\.cursor\hooks.json`，修改前备份为 `*.hachiorb-backup-*`。
+- 安装器将 Hook 处理程序复制到 `%LOCALAPPDATA%\HachiOrb\hooks\`，保证你之后移动解压文件夹时旧 Hook 不失效；配置文件在 Codex 用户目录（优先 `%CODEX_HOME%`，否则 `%USERPROFILE%\.codex`）和 `%USERPROFILE%\.cursor\hooks.json`，修改前备份为 `*.hachiorb-backup-*`。
 - 若 Codex 已有其他工具的 `notify`，**优先通过复合通知器保留原命令并同时通知 HachiOrb**，不再要求常规情况下手工合并。若配置包含不支持的复杂语法、递归包装、缺失原始记录等不安全情况，则输出 `[ERROR]` 并保留原配置，要求人工核查。
-- Codex 官方 `notify` 只在 `agent-turn-complete` 触发，且是否会从你当前使用的 **Codex GUI/IDE** 触发取决于其运行方式，不保证所有 Codex 界面都使用 CLI 配置。<https://learn.chatgpt.com/docs/config-file/config-advanced>
+- Codex 官方生命周期 Hook 当前可用于本地 Codex 会话；需要在 Codex 中审核/信任新 Hook 后生效。若 `config.toml` 显式关闭 Hooks 或已使用内联 `[hooks]` 配置，安装器会保留配置并提示人工合并。<https://learn.chatgpt.com/docs/hooks>
 - Cursor 用户级 Hooks 只在本机支持的 Agent 会话中运行；普通补全、远程云 Agent 不等同于本机 Hook。<https://cursor.com/docs/hooks>
 - 如果 PowerShell 执行被公司策略限制，安装器会显示错误；不要全局降低系统安全策略，可让管理员审核此安装脚本。
 
@@ -129,9 +130,9 @@ HachiOrb 托盘 → 复制 AI 状态接口地址（默认 `http://127.0.0.1:4173
 
 Windows Release 便携版已经增加外置 BAT、PowerShell 和 Node.js 安装器的打包步骤，解压后安装入口将位于 `HachiOrb.exe` **同一目录**。
 
-**限制：** 官方 Codex `notify` 目前只提供 `agent-turn-complete`，不是实时思考/工具调用事件。Codex GUI/IDE 是否读取当前用户的 CLI notify 还需本机验证。
+**限制：** Codex 只会运行已审核并信任的 Hook。Hook 事件覆盖 Codex 根会话与子代理，但 HachiOrb 的聚合状态按产品区分，不区分同一产品内的多个并行会话。
 
-**源文件：** `scripts/setup-integrations.cjs`、`scripts/codex-notify-config.cjs`、`integrations/codex-notify-dispatcher.cjs`、`integrations/codex-notify-dispatcher.ps1`。
+**源文件：** `scripts/setup-integrations.cjs`、`scripts/codex-notify-config.cjs`、`integrations/codex-hook.cjs`、`integrations/agent-status.ps1`、`integrations/codex-notify-dispatcher.cjs`、`integrations/codex-notify-dispatcher.ps1`。
 
 ## 6. 多 Agent 状态仲裁（v1.3.0）
 

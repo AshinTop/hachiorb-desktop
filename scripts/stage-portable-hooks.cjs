@@ -17,6 +17,7 @@ const files=[
  'integrations/codex-notify-dispatcher.cjs',
  'integrations/codex-notify-dispatcher.ps1',
  'integrations/codex-notify.cjs',
+ 'integrations/codex-hook.cjs',
  'integrations/agent-events.cjs',
  'integrations/local-status.cjs',
  'integrations/agent-status.ps1',

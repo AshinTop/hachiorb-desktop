@@ -6,6 +6,7 @@ const path=require('node:path');
 const os=require('node:os');
 const root=path.resolve(__dirname,'..');
 const {decodeArray,inspectNotify,installCodex,MANIFEST}=require('../scripts/codex-notify-config.cjs');
+const {setupCodexHooks,CODEX_HOOK_EVENTS}=require('../scripts/setup-integrations.cjs');
 const {dispatch,readOriginal}=require('../integrations/codex-notify-dispatcher.cjs');
 function temp(){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'hachiorb-notify-test-'));return {dir,home:path.join(dir,'home'),stableDir:path.join(dir,'AppData Local','HachiOrb','hooks')};}
 function prepare(context,config){const file=path.join(context.home,'.codex','config.toml');fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,config);return file;}
@@ -62,6 +63,38 @@ test('Installed dispatcher without saved manifest is rejected to prevent losing 
 test('Legacy HachiOrb direct hook is upgraded without treating it as another tool',()=>{
  const ctx=temp();prepare(ctx,`notify = ${JSON.stringify(['node','C:\\HachiOrb\\integrations\\codex-notify.cjs'])}\n`);
  const result=install(ctx);assert.equal(result.status,'installed');assert.equal(fixture(ctx).originalNotify,null);
+ fs.rmSync(ctx.dir,{recursive:true,force:true});
+});
+test('Codex lifecycle installer merges hooks, preserves other handlers, and is idempotent',()=>{
+ const ctx=temp(),dir=path.join(ctx.home,'.codex'),file=path.join(dir,'hooks.json');
+ fs.mkdirSync(dir,{recursive:true});
+ const prior={description:'keep this',hooks:{PreToolUse:[{matcher:'Bash',statusMessage:'Existing tool',hooks:[{type:'command',command:'other-tool'}]}]}};
+ fs.writeFileSync(file,JSON.stringify(prior,null,2)+'\n');
+ const options={home:ctx.home,root,stableDir:ctx.stableDir,nodeExe:process.execPath,codexHome:dir};
+ const result=setupCodexHooks(options);
+ assert.equal(result.status,'installed');assert.ok(fs.existsSync(result.backup));
+ let data=JSON.parse(fs.readFileSync(file,'utf8'));assert.equal(data.description,'keep this');
+ const original=data.hooks.PreToolUse.find(group=>group.matcher==='Bash');
+ assert.equal(original.statusMessage,'Existing tool');assert.equal(original.hooks[0].command,'other-tool');
+ for(const event of CODEX_HOOK_EVENTS){
+  const installed=data.hooks[event].flatMap(group=>group.hooks).find(hook=>hook.type==='command'&&hook.command.includes('codex-hook.cjs'));
+  assert.ok(installed,event);assert.equal(installed.commandWindows,installed.command);
+  if(event==='Interrupt'||event==='SessionEnd'){assert.equal(installed.timeout,3);assert.equal(installed.async,undefined)}
+  else assert.equal(installed.async,true);
+ }
+ const once=fs.readFileSync(file,'utf8');const resultAgain=setupCodexHooks(options);
+ assert.equal(resultAgain.status,'already-installed');assert.equal(fs.readFileSync(file,'utf8'),once);
+ assert.equal(fs.readdirSync(dir).filter(name=>name.startsWith('hooks.json.hachiorb-backup-')).length,1);
+ fs.rmSync(ctx.dir,{recursive:true,force:true});
+});
+test('Codex lifecycle installer refuses disabled hooks or inline hooks without changing config',()=>{
+ const ctx=temp(),dir=path.join(ctx.home,'.codex'),config=path.join(dir,'config.toml');fs.mkdirSync(dir,{recursive:true});
+ fs.writeFileSync(config,'[features]\nhooks = false\n');
+ const options={home:ctx.home,root,stableDir:ctx.stableDir,codexHome:dir};
+ assert.throws(()=>setupCodexHooks(options),/disabled/);
+ fs.writeFileSync(config,'[[hooks.UserPromptSubmit]]\n');
+ assert.throws(()=>setupCodexHooks(options),/already declares hooks/);
+ assert.equal(fs.existsSync(path.join(dir,'hooks.json')),false);
  fs.rmSync(ctx.dir,{recursive:true,force:true});
 });
 test('Dispatcher invokes original first and then HachiOrb with identical raw JSON',async()=>{

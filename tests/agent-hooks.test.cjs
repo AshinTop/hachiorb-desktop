@@ -3,7 +3,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const {spawn}=require('node:child_process');
 const path=require('node:path');
-const {codexEvent,cursorEvent}=require('../integrations/agent-events.cjs');
+const {codexEvent,codexHookEvent,cursorEvent}=require('../integrations/agent-events.cjs');
 const {createBridge}=require('../src/bridge.cjs');
 const {send,configuredPorts}=require('../integrations/local-status.cjs');
 function run(file,args=[],input='',env=process.env){
@@ -17,6 +17,17 @@ test('codex official notify event maps only turn-complete without full prompt',(
  const s=codexEvent({type:'agent-turn-complete',cwd:'C:\\work\\repo', 'input-messages':['secret prompt']});
  assert.equal(s.agent,'codex');assert.equal(s.state,'done');assert.ok(!s.task.includes('secret'));
  assert.equal(codexEvent({type:'unsupported'}),null);
+});
+test('Codex lifecycle events distinguish thinking, tools, permission, subagents, and stop',()=>{
+ assert.equal(codexHookEvent('UserPromptSubmit').state,'thinking');
+ assert.equal(codexHookEvent('PreToolUse').state,'working');
+ assert.equal(codexHookEvent('PostToolUse').state,'thinking');
+ assert.deepEqual(codexHookEvent('PermissionRequest'),{agent:'codex',state:'idle',emotionId:'35',attention:'permission',task:'Codex 等待授权'});
+ assert.equal(codexHookEvent('SubagentStart').agent,'codex');assert.equal(codexHookEvent('SubagentStart').state,'working');
+ assert.equal(codexHookEvent('SubagentStop').state,'thinking');
+ assert.equal(codexHookEvent('Stop').state,'done');
+ assert.equal(codexHookEvent('Interrupt').state,'idle');
+ assert.equal(codexHookEvent('unsupported'),null);
 });
 test('test subprocesses can disable all local status delivery',()=>{
  assert.deepEqual(configuredPorts(''),[]);
@@ -54,6 +65,15 @@ test('Cursor hook returns valid JSON response even when local desktop is offline
 test('Codex hook ignores unsupported event and never prints private payload',async()=>{
  const result=await run('integrations/codex-notify.cjs',[JSON.stringify({type:'unknown',secret:'qwerty'})]);
  assert.equal(result.code,0);assert.equal(result.stdout,'');assert.ok(!result.stderr.includes('qwerty'));
+});
+test('Codex lifecycle hook reports a fixed status and never echoes prompt JSON',async()=>{
+ const events=[];const server=createBridge(s=>events.push(s));const port=await server.listen(0);
+ try{
+  const result=await run('integrations/codex-hook.cjs',['UserPromptSubmit'],JSON.stringify({prompt:'SECRET PROMPT',cwd:'C:/private/path'}),{...process.env,HACHI_STATUS_PORTS:String(port)});
+  assert.equal(result.code,0);assert.equal(result.stdout,'');assert.equal(result.stderr,'');
+  assert.equal(events.length,1);assert.equal(events[0].agent,'codex');assert.equal(events[0].state,'thinking');
+  assert.equal(events[0].task,'Codex 正在思考');assert.ok(!JSON.stringify(events[0]).includes('SECRET'));
+ }finally{await server.close();}
 });
 test('Grok Bot explicit event rejects unknown state',async()=>{
  const result=await run('integrations/grok-bot-event.cjs',['executing']);assert.equal(result.code,2);

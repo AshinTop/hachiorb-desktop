@@ -116,15 +116,15 @@ function atomicWrite(file,content) {
 }
 function stage(root, stableDir=BASE_DIR){
  fs.mkdirSync(stableDir,{recursive:true});
- for(const name of [ENTRY,'codex-notify.cjs','agent-events.cjs','local-status.cjs','agent-status.ps1','workbuddy-hook.cjs','codex-notify-dispatcher.ps1']){
+ for(const name of [ENTRY,'codex-hook.cjs','codex-notify.cjs','agent-events.cjs','local-status.cjs','agent-status.ps1','workbuddy-hook.cjs','codex-notify-dispatcher.ps1']){
   const source=path.join(root,'integrations',name);
   if(!fs.existsSync(source))throw Error('Missing integration file: '+name);
   const target=path.join(stableDir,name);
   if(path.resolve(source)!==path.resolve(target))fs.copyFileSync(source,target);
  }
 }
-function installCodex({root=path.resolve(__dirname,'..'),home=os.homedir(),stableDir=BASE_DIR,nodeExe=process.execPath}={}) {
- const file=path.join(home,'.codex','config.toml'),manifestPath=path.join(stableDir,MANIFEST);
+function installCodex({root=path.resolve(__dirname,'..'),home=os.homedir(),codexHome=process.env.CODEX_HOME,stableDir=BASE_DIR,nodeExe=process.execPath}={}) {
+ const file=path.join(codexHome||path.join(home,'.codex'),'config.toml'),manifestPath=path.join(stableDir,MANIFEST);
  const before=fs.existsSync(file)?fs.readFileSync(file,'utf8'):'';
  const parsed=inspectNotify(before), current=parsed.notify?.args||null;
  const managed=current && isManaged(current,stableDir);

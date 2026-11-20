@@ -1,21 +1,40 @@
 # Portable, Node-free HachiOrb hook handler for Windows PowerShell 5.1+.
-# Codex passes a single JSON argument. Cursor and WorkBuddy pass JSON on stdin.
+# Codex notify passes JSON as an argument; lifecycle hooks, Cursor, and WorkBuddy use stdin.
 # Never transmits prompts, assistant text, thinking text, files, or credentials.
 param([string]$Event = '', [string]$Payload = '')
 $ErrorActionPreference = 'Stop'
-$reply = if($Event -eq 'beforeSubmitPrompt') { '{"continue":true}' } else { '{}' }
+    $reply = if($Event -eq 'beforeSubmitPrompt') { '{"continue":true}' } else { '{}' }
 try {
+    $isCodexHook = $Event.StartsWith('codex:',[System.StringComparison]::OrdinalIgnoreCase)
     $json = if($Event -eq 'codex') {
         if($Payload) { $Payload } elseif($args.Count) { [string]$args[0] } else { '' }
+    } elseif($isCodexHook) {
+        # Codex lifecycle JSON can contain prompts and tool arguments; drain but never parse it.
+        [Console]::In.ReadToEnd() | Out-Null
+        ''
     } else { [Console]::In.ReadToEnd() }
-    $info = if([string]::IsNullOrWhiteSpace($json)) { [pscustomobject]@{} } else { ConvertFrom-Json -InputObject $json }
+    $info = if($isCodexHook -or [string]::IsNullOrWhiteSpace($json)) { [pscustomobject]@{} } else { ConvertFrom-Json -InputObject $json }
     $workbuddy = $Event.StartsWith('workbuddy:',[System.StringComparison]::OrdinalIgnoreCase)
-    $agent = if($Event -eq 'codex') { 'codex' } elseif($workbuddy) { 'workbuddy' } else { 'cursor' }
+    $agent = if($Event -eq 'codex' -or $isCodexHook) { 'codex' } elseif($workbuddy) { 'workbuddy' } else { 'cursor' }
     $state = $null
     $emotionId = $null
     $attention = $null
     $task = ''
-    if($agent -eq 'codex') {
+    if($isCodexHook) {
+        $eventName = $Event.Substring(6)
+        switch($eventName) {
+            'UserPromptSubmit' { $state='thinking'; $task='Codex thinking'; break }
+            'PreToolUse' { $state='working'; $task='Codex using a tool'; break }
+            'PostToolUse' { $state='thinking'; $task='Codex thinking'; break }
+            'PermissionRequest' { $state='idle'; $emotionId='35'; $attention='permission'; $task='Codex awaiting permission'; break }
+            'SubagentStart' { $state='working'; $task='Codex running a subagent'; break }
+            'SubagentStop' { $state='thinking'; $task='Codex reviewing subagent results'; break }
+            'Stop' { $state='done'; $task='Codex turn completed'; break }
+            'Interrupt' { $state='idle'; $task='Codex turn interrupted'; break }
+            'SessionEnd' { $state='idle'; $task='Codex session ended'; break }
+            default { break }
+        }
+    } elseif($Event -eq 'codex') {
         if($info.type -ne 'agent-turn-complete') { return }
         $state = 'done'; $task = 'Codex turn completed'
     } elseif($workbuddy) {

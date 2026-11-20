@@ -10,6 +10,22 @@ function codexEvent(input){
  const proj=briefProject(input.cwd);
  return {agent:'codex',state:'done',task:proj?`Codex · ${proj} 任务完成`:'Codex 任务完成'};
 }
+/** Codex lifecycle events. The prompt/tool payload is intentionally ignored. */
+function codexHookEvent(kind){
+ const base={agent:'codex'};
+ switch(kind){
+  case 'UserPromptSubmit': return {...base,state:'thinking',task:'Codex 正在思考'};
+  case 'PreToolUse': return {...base,state:'working',task:'Codex 正在执行工具'};
+  case 'PostToolUse': return {...base,state:'thinking',task:'Codex 正在继续思考'};
+  case 'PermissionRequest': return {...base,state:'idle',emotionId:'35',attention:'permission',task:'Codex 等待授权'};
+  case 'SubagentStart': return {...base,state:'working',task:'Codex 正在运行子代理'};
+  case 'SubagentStop': return {...base,state:'thinking',task:'Codex 正在整理子代理结果'};
+  case 'Stop': return {...base,state:'done',task:'Codex 本轮任务已结束'};
+  case 'Interrupt': return {...base,state:'idle',task:'Codex 本轮任务已中断'};
+  case 'SessionEnd': return {...base,state:'idle',task:'Codex 会话已结束'};
+  default: return null;
+ }
+}
 function cursorEvent(kind,input={}){
  const project=Array.isArray(input.workspace_roots)?briefProject(input.workspace_roots[0]):briefProject(input.cwd);
  const task=project?`Cursor · ${project}`:'Cursor Agent';
@@ -41,4 +57,4 @@ function workbuddyEvent(kind,input={}){
     default: return null;
   }
 }
-module.exports={codexEvent,cursorEvent,workbuddyEvent,briefProject};
+module.exports={codexEvent,codexHookEvent,cursorEvent,workbuddyEvent,briefProject};

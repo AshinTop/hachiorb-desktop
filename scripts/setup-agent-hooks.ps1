@@ -6,6 +6,7 @@ $handlerSource = Join-Path $repo 'integrations\agent-status.ps1'
 # Register hooks against a stable user directory, so moving/deleting the ZIP does not break them.
 $handler = Join-Path $env:LOCALAPPDATA 'HachiOrb\hooks\agent-status.ps1'
 $homeFolder = [Environment]::GetFolderPath('UserProfile')
+$codexFolder = if([string]::IsNullOrWhiteSpace($env:CODEX_HOME)) { Join-Path $homeFolder '.codex' } else { [System.IO.Path]::GetFullPath($env:CODEX_HOME) }
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $failures = 0
 if (-not (Test-Path -LiteralPath $handlerSource -PathType Leaf)) {
@@ -35,7 +36,7 @@ function Quote-Toml([string]$value) {
     return (ConvertTo-Json -InputObject $value -Compress)
 }
 function Install-Codex {
-    $file = Join-Path $homeFolder '.codex\config.toml'
+    $file = Join-Path $codexFolder 'config.toml'
     $content = if(Test-Path -LiteralPath $file -PathType Leaf) { [System.IO.File]::ReadAllText($file) } else { '' }
     # This fallback safely supports one-line, double-quoted TOML string arrays.
     if($content.Contains('"""') -or $content.Contains("'''")) {
@@ -92,6 +93,75 @@ function Install-Codex {
     Write-Config $file $next
     Write-Host "[OK] Codex composite dispatcher installed: $file"
     if($null -ne $original) { Write-Host '[OK] Previous Codex notify stored and will run first.' }
+}
+function Install-CodexHooks {
+    $configFile = Join-Path $codexFolder 'config.toml'
+    if(Test-Path -LiteralPath $configFile -PathType Leaf) {
+        $section = ''
+        foreach($rawLine in [System.IO.File]::ReadAllLines($configFile)) {
+            $line = ($rawLine -replace '#.*$','').Trim()
+            if($line -match '^\[\[?\s*([^\]]+?)\s*\]\]?$') {
+                $section = $Matches[1].Trim()
+                if($section -match '^(?i:hooks)(\.|$)') { throw 'Codex config.toml already declares hooks; merge HachiOrb into that hooks source to avoid duplicate hook layers.' }
+                continue
+            }
+            if($section -ieq 'features' -and $line -match '^(hooks|codex_hooks)\s*=\s*false(?:\s|$)') {
+                throw 'Codex lifecycle hooks are disabled in config.toml; no hooks were installed.'
+            }
+        }
+    }
+    $file = Join-Path $codexFolder 'hooks.json'
+    if(Test-Path -LiteralPath $file -PathType Leaf) {
+        try { $data = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json }
+        catch { throw 'Existing Codex hooks.json is invalid JSON; unchanged.' }
+    } else { $data = [pscustomobject]@{ hooks = [pscustomobject]@{} } }
+    if($null -eq $data -or $data -isnot [pscustomobject]) { throw 'Codex hooks.json must be an object; unchanged.' }
+    if($null -eq $data.hooks) {
+        if($data.PSObject.Properties.Name -contains 'hooks') { throw 'Codex hooks must be an object; unchanged.' }
+        $data | Add-Member -NotePropertyName hooks -NotePropertyValue ([pscustomobject]@{})
+    }
+    if($data.hooks -isnot [pscustomobject]) { throw 'Codex hooks must be an object; unchanged.' }
+    $events = @('UserPromptSubmit','PreToolUse','PostToolUse','PermissionRequest','SubagentStart','SubagentStop','Stop','Interrupt','SessionEnd')
+    foreach($eventName in $events) {
+        $property = $data.hooks.PSObject.Properties[$eventName]
+        if($null -ne $property -and $null -ne $property.Value) {
+            if($property.Value -isnot [array]) { throw "Codex $eventName hook groups must be an array; unchanged." }
+            foreach($group in $property.Value) {
+                if($null -eq $group -or $group -isnot [pscustomobject] -or $group.hooks -isnot [array]) {
+                    throw "Codex $eventName contains an unsupported hook group; unchanged."
+                }
+            }
+        }
+    }
+    $changed = $false
+    foreach($eventName in $events) {
+        $command = 'powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $handler + '" -Event codex:' + $eventName
+        $property = $data.hooks.PSObject.Properties[$eventName]
+        $groups = if($null -eq $property -or $null -eq $property.Value) { @() } else { @($property.Value) }
+        $keptGroups = @()
+        foreach($group in $groups) {
+            $keptHooks = @($group.hooks | Where-Object { -not ($_ -and $_.type -eq 'command' -and $_.command -match 'hachiorb[^\"]*codex-hook\.cjs') })
+            if($keptHooks.Count -ne $group.hooks.Count) { $changed = $true }
+            if($keptHooks.Count -gt 0) { $groupCopy = $group | Select-Object *; $groupCopy.hooks = $keptHooks; $keptGroups += $groupCopy }
+        }
+        $exists = $false
+        foreach($group in $keptGroups) { foreach($hook in $group.hooks) { if($hook.type -eq 'command' -and $hook.command -eq $command) { $exists = $true } } }
+        if(-not $exists) {
+            $timeout = if($eventName -eq 'Interrupt' -or $eventName -eq 'SessionEnd') { 3 } else { 5 }
+            $hook = [ordered]@{ type='command'; command=$command; commandWindows=$command; timeout=$timeout }
+            if($eventName -ne 'Interrupt' -and $eventName -ne 'SessionEnd') { $hook.async = $true }
+            $keptGroups += [pscustomobject]@{ hooks=@([pscustomobject]$hook) }
+            $changed = $true
+        }
+        if($keptGroups.Count -gt 0) {
+            if($null -eq $property) { $data.hooks | Add-Member -NotePropertyName $eventName -NotePropertyValue $keptGroups }
+            else { $property.Value = $keptGroups }
+        } elseif($null -ne $property) { $data.hooks.PSObject.Properties.Remove($eventName) }
+    }
+    if($changed) {
+        Write-Config $file ((ConvertTo-Json -InputObject $data -Depth 64) + "`r`n")
+        Write-Host "[OK] Codex lifecycle hooks installed: $file"
+    } else { Write-Host '[OK] Codex lifecycle hooks already installed.' }
 }
 function Install-Cursor {
     $file = Join-Path $homeFolder '.cursor\hooks.json'
@@ -181,10 +251,11 @@ function Install-WorkBuddy {
 }
 
 try { Install-Codex } catch { $failures++; Write-Host "[ERROR] Codex: $($_.Exception.Message)" -ForegroundColor Red }
+try { Install-CodexHooks } catch { $failures++; Write-Host "[ERROR] Codex lifecycle hooks: $($_.Exception.Message)" -ForegroundColor Red }
 try { Install-Cursor } catch { $failures++; Write-Host "[ERROR] Cursor: $($_.Exception.Message)" -ForegroundColor Red }
 try { Install-WorkBuddy } catch { $failures++; Write-Host "[ERROR] WorkBuddy: $($_.Exception.Message)" -ForegroundColor Red }
 Write-Host ''
-Write-Host 'Codex notify fires at turn completion, not on each thinking/edit step.'
+Write-Host 'Codex lifecycle hooks report thinking, tool use, permission, subagent, and turn end events.'
 Write-Host 'Hook events only update a running HachiOrb on localhost.'
 if($failures -gt 0) { exit 1 }
 exit 0
