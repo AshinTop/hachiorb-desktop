@@ -34,6 +34,13 @@ function boundPosition(x,y,size){
  const p=screen.getDisplayNearestPoint({x,y});const a=p.workArea;
  return clampPosition(x,y,size,a);
 }
+function normalizeDragSize(){
+ if(!dragSession||!windowPet||windowPet.isDestroyed())return;
+ const b=windowPet.getBounds();
+ if(b.width===settings.size&&b.height===settings.size)return;
+ const area=screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
+ windowPet.setBounds(fixedBounds(b,settings.size,area),false);
+}
 function defaultPosition(){const a=screen.getPrimaryDisplay().workArea;return {x:a.x+a.width-settings.size-28,y:a.y+a.height-settings.size-48}}
 function sendState(state){if(windowPet&&!windowPet.isDestroyed())windowPet.webContents.send('hachi:state',state);refreshTray();}
 function applySettings(){
@@ -104,7 +111,10 @@ function setupIPC(){
   const p=screen.getCursorScreenPoint(),start=dragSession;
   const area=screen.getDisplayNearestPoint(p).workArea;
   const bounded=dragPosition(start.startCursor,start.startBounds,p,settings.size,area);
-  windowPet.setPosition(bounded.x,bounded.y);
+  const b=windowPet.getBounds();
+  if(b.width!==settings.size||b.height!==settings.size)
+    windowPet.setBounds({...bounded,width:settings.size,height:settings.size},false);
+  else windowPet.setPosition(bounded.x,bounded.y);
  });
  ipcMain.on('hachi:move-end',()=>{
   if(!windowPet)return;dragSession=null;
@@ -149,11 +159,14 @@ async function setupApp(){
   if(!app.isQuitting){e.preventDefault();windowPet.hide();}
  });
  windowPet.on('moved',()=>{
-   // Don't rewrite preferences on every drag frame. The final drag-end handler
-   // persists the position and normalizes the window size.
-   if(dragSession)return;
+   // Keep DPI-driven window resizes from showing during a drag. Persist only
+   // after release so an intermediate monitor transition does not become the
+   // user's selected size or saved position.
+   if(dragSession){normalizeDragSize();return;}
    const b=windowPet.getBounds();settings.x=b.x;settings.y=b.y;saveSettings();
  });
+ windowPet.on('move',normalizeDragSize);
+ windowPet.on('resize',normalizeDragSize);
  windowPet.once('ready-to-show',()=>{windowPet.showInactive();applySettings();});
  await windowPet.loadFile(path.join(__dirname,'index.html'));
  tray=new Tray(nativeImage.createFromPath(path.join(ROOT,'assets/tray.png')));

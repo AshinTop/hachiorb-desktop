@@ -154,6 +154,7 @@ test('Portable packaging stages installer outside Electron app.asar',()=>{
  const ctx=temp();const out=path.join(ctx.dir,'HachiOrb-win32-x64');fs.mkdirSync(out,{recursive:true});
  const staged=stagePortable({source:root,output:out});
  assert.ok(staged.length>=10);
+ assert.ok(files.includes('package.json'),'portable hook setup needs the app version next to the staged scripts');
  for(const rel of files)assert.equal(fs.readFileSync(path.join(out,rel),'utf8'),fs.readFileSync(path.join(root,rel),'utf8'));
  const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
  assert.match(pkg.scripts['pack:win'],/stage-portable-hooks\.cjs/);

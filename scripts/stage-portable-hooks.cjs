@@ -7,6 +7,7 @@ const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const dest=path.join(root,'release','HachiOrb-win32-x64');
 const files=[
+ 'package.json',
  'setup-agent-hooks-windows.bat',
  'test-agent-connection-windows.bat',
  'scripts/setup-integrations.cjs',

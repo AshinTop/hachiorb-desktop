@@ -45,6 +45,37 @@ test('Installer safely merges other WorkBuddy hooks, backs up, and reruns idempo
  assert.equal(fs.readdirSync(path.dirname(file)).filter(x=>x.includes('hachiorb-backup')).length,1);
  clean(ctx);
 });
+test('Desktop WorkBuddy installs HachiOrb through its enabled local Hook plugin registry',()=>{
+ const ctx=temp(),appHome=path.join(ctx.home,'.workbuddy-ai'),pluginsHome=path.join(appHome,'plugins');
+ fs.mkdirSync(pluginsHome,{recursive:true});
+ fs.writeFileSync(path.join(appHome,'settings.json'),JSON.stringify({theme:'dark',enabledPlugins:{'existing@marketplace':true}}));
+ fs.writeFileSync(path.join(pluginsHome,'known_marketplaces.json'),JSON.stringify({'existing-market':{type:'directory',source:{source:'directory',path:'C:/existing-market'}}}));
+ fs.writeFileSync(path.join(pluginsHome,'installed_plugins.json'),JSON.stringify({version:1,plugins:{'existing@existing-market':[{scope:'user',installPath:'C:/existing-plugin',version:'1.0.0'}]}}));
+ fs.writeFileSync(path.join(pluginsHome,'configured-plugins.json'),JSON.stringify({version:1,builtInMarketPlugins:[{name:'existing',marketplaceName:'existing-market',scope:'user'}],builtInMarketPluginsMerge:[]}));
+ const result=run(ctx),pluginId='hachiorb-status@hachiorb-local';assert.equal(result.status,'installed');assert.equal(result.desktop.plugin,pluginId);
+ const settings=JSON.parse(fs.readFileSync(path.join(appHome,'settings.json'),'utf8'));
+ assert.equal(settings.theme,'dark');assert.equal(settings.enabledPlugins['existing@marketplace'],true);assert.equal(settings.enabledPlugins[pluginId],true);
+ const installed=JSON.parse(fs.readFileSync(path.join(pluginsHome,'installed_plugins.json'),'utf8'));
+ assert.equal(installed.plugins['existing@existing-market'][0].installPath,'C:/existing-plugin');
+ assert.equal(installed.plugins[pluginId][0].installPath,result.desktop.cacheDir);
+ const known=JSON.parse(fs.readFileSync(path.join(pluginsHome,'known_marketplaces.json'),'utf8'));
+ assert.equal(known['existing-market'].source.path,'C:/existing-market');assert.equal(known['hachiorb-local'].type,'directory');
+ const configured=JSON.parse(fs.readFileSync(path.join(pluginsHome,'configured-plugins.json'),'utf8'));
+ assert.ok(configured.builtInMarketPlugins.some(item=>item.name==='existing'));
+ assert.ok(configured.builtInMarketPlugins.some(item=>item.name==='hachiorb-status'&&item.marketplaceName==='hachiorb-local'));
+ const pluginRoot=result.desktop.cacheDir;
+ assert.equal(JSON.parse(fs.readFileSync(path.join(pluginRoot,'.codebuddy-plugin','plugin.json'),'utf8')).hooks,'./hooks/hooks.json');
+ const hookConfig=JSON.parse(fs.readFileSync(path.join(pluginRoot,'hooks','hooks.json'),'utf8'));
+ for(const event of WORKBUDDY_EVENTS){
+  const handlers=hookConfig.hooks[event].flatMap(group=>group.hooks);
+  assert.equal(handlers.length,1);assert.match(handlers[0].command,/workbuddy-hook\.cjs['"]?\s+workbuddy:/);assert.equal(handlers[0].timeout,15);
+ }
+ const backupFiles=[path.join(appHome,'settings.json'),...['known_marketplaces.json','installed_plugins.json','configured-plugins.json'].map(name=>path.join(pluginsHome,name))];
+ const backupsBefore=backupFiles.map(file=>fs.readdirSync(path.dirname(file)).filter(name=>name.startsWith(path.basename(file)+'.hachiorb-backup-')).length);
+ assert.equal(run(ctx).status,'already-installed');
+ assert.deepEqual(backupFiles.map(file=>fs.readdirSync(path.dirname(file)).filter(name=>name.startsWith(path.basename(file)+'.hachiorb-backup-')).length),backupsBefore);
+ clean(ctx);
+});
 test('Installer refuses malformed WorkBuddy config without modifying it',()=>{
  for(const raw of ['{oops',JSON.stringify({hooks:{Stop:{bad:true}}}),JSON.stringify({hooks:{Stop:[{matcher:''}]}}),JSON.stringify({hooks:[]})]){
   const ctx=temp(),file=filename(ctx);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,raw);

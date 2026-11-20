@@ -1,131 +1,77 @@
-# HachiOrb Desktop v1.3.0（Windows 桌面 Grok Ball）
+# HachiOrb Desktop v1.3.1
 
-这是从 HachiWatch 项目分离出的 **Windows 桌面悬浮宠物**。不需要手表、手机、DevEco、华为账号或应用市场发布。
+HachiOrb 是 Windows 桌面悬浮宠物，也可以显示 Codex、Cursor、WorkBuddy 和 Grok Bot 上报的状态。动画采用 [TyCoding/grok-ball](https://github.com/TyCoding/grok-ball) 原版 SVG / JavaScript 引擎。
 
-- **真正采用 TyCoding/grok-ball 的原版 SVG / JS 引擎**，不是临摹表情，也不是循环四张 PNG。
-- 无边框、透明背景、球体始终可见。桌面任意角落拖动；短点球体旋转；全桌面鼠标注视。
-- 系统托盘右键菜单：32 种表情、**Codex / Cursor / WorkBuddy / Grok Bot 最近状态**、球体尺寸、置顶、锁定鼠标穿透、隐藏/退出、打包后开机启动。
-- 桌宠底部默认显示 **当前 Agent · 状态**（不显示完整提示词和代码）；托盘中可关闭这行文字，保持纯净无边框球体。
-- 本机状态接口：接入 Codex / Cursor / WorkBuddy / Grok Bot（主动事件）/ 其他 Hook，使用 `http://127.0.0.1:4173/api/state`。若端口被占用会选择 4174 或 4175，在托盘里可以查看、复制实际端口。
-- 首次联网下载并校验上游源码，之后可以离线运行。
+- Windows x64 便携版：无需安装向导，解压后运行 `HachiOrb.exe`。
+- 可通过 Hook 事件显示思考、执行、等待授权、完成和错误等状态。
+- 支持多种 AI 工具同时上报；当前按工具记录最近状态，不区分同一工具中的多个并行对话。
+- 状态服务只监听本机 `127.0.0.1`，默认端口 `4173`；端口被占用时会尝试 `4174`、`4175`。
+- Hook 只上报状态类型和固定短标签，不读取或上传提示词、聊天正文、代码、工具参数或密钥。
 
-## 最简单的启动方法
+## 下载和安装
 
-**先在 Windows 电脑安装 Node.js 22+：** https://nodejs.org/
+前往 [GitHub Releases](https://github.com/AshinTop/hachiorb-desktop/releases/latest)，下载 `HachiOrb-1.3.1-win32-x64.zip`。
 
-1. 解压 ZIP，进入 `HachiOrb-Desktop-v1` 目录。
-2. **双击 `start-windows.bat`**。
-3. 初次启动自动下载官方原版 Grok Ball 动画和 Electron。完成后，桌面右下角出现动态表情球。
-4. **按住左键拖动球体**改变位置；轻点旋转；**右键球体**或右击 Windows 托盘中的 HachiOrb 图标打开设置。
-5. 退出后再次双击同一个 BAT 即可启动；下载过的引擎和依赖可以离线复用。
+1. 将 ZIP **完整解压**到固定文件夹，例如 `C:\Apps\HachiOrb`。不要直接在压缩包中运行，也不要只复制 `HachiOrb.exe`；程序依赖文件必须与 EXE 放在一起。
+2. 双击解压目录中的 `HachiOrb.exe`。首次启动后，桌面上会出现小球，系统托盘也会显示 HachiOrb 图标。
+3. 右键小球或托盘图标打开菜单；拖动小球可以调整位置，托盘菜单可以设置表情、尺寸、置顶和鼠标穿透。
 
-> 说明：当前提供的是完整可构建源码，不是现成的已签名 Windows EXE。不能保证所有电脑网络都能下载 Electron。首次需要安装 Node.js；打包后便不需要 Node.js。
+这是未经代码签名的个人构建版，Windows SmartScreen 可能显示未知发布者。请从本项目 Release 下载，并可用同一页面提供的 `.sha256` 文件核对 ZIP 完整性。
 
-## 自己生成可直接双击运行的 EXE
+## 接入 Codex、Cursor 和 WorkBuddy
 
-在自己的 Windows 电脑上 **双击 `build-windows.bat`**。它会自动下载所需依赖并打包：
+若要显示 AI 工具的 Hook 状态，需要在运行 HachiOrb 的同一台电脑上安装 **Node.js 22 或更新版本**。运行桌宠本身不需要另外安装 Node.js。
 
-`release/HachiOrb-win32-x64/HachiOrb.exe`
+1. 确认 HachiOrb 正在运行。
+2. 在解压目录双击 `setup-agent-hooks-windows.bat`。请使用与 Codex、Cursor、WorkBuddy 相同的 Windows 用户账户运行。
+3. 安装完成后，完全退出并重启 Codex、Cursor 和 WorkBuddy，再提交一条真实任务验证状态变化。
 
-需要把整个 `HachiOrb-win32-x64` 文件夹保留在一起。此 EXE 为未签名个人作品，Windows SmartScreen 可能提示未知发布者；请只运行自己构建的可信源码。
+安装器会配置 Codex 生命周期 Hook、Cursor Hook，并将 HachiOrb 本地 Hook 插件注册到 WorkBuddy Desktop。已有 Codex `notify` 和其他 Hook 会保留；修改配置前会生成 `.hachiorb-backup-*` 备份。配置复杂或格式不支持时，安装器会报告错误并避免强行覆盖。WorkBuddy 必须完全退出后重启，才能加载新插件。
 
-## 日常操作
+没有 Node.js 时，安装器的 PowerShell 后备方案可以配置 Codex 和 Cursor，但 WorkBuddy Hook 需要 Node.js。为了一次装好三种工具，请先安装 Node.js 22+，再运行安装器。
 
-| 操作 | 作用 |
-|---|---|
-| 单击球体 | 自旋并甩彩带 |
-| 按住球体左键拖动 | 移动到桌面任意位置 |
-| 移动鼠标 | 眼睛随桌面光标方向转动 |
-| 右键球体 | 显示设置菜单 |
-| 右键系统托盘 HachiOrb 图标 | 显示设置菜单，支持全部 32 种表情 |
-| 双击托盘图标 | 恢复显示桌宠 |
-| 菜单“始终置顶” | 关闭后允许其他窗口盖住球体 |
-| 菜单“锁定球体（鼠标穿透）” | 不挡鼠标点击，**只能从托盘关闭锁定** |
-| 菜单“开机启动” | 只对已打包的 exe 有效，默认不启用 |
-| 菜单“退出 HachiOrb” | 完全退出，不再悬浮 |
+可双击 `test-agent-connection-windows.bat` 检查 HachiOrb 的本地状态接口是否可连接。它只检查本地接口，不代表 AI 工具的 Hook 已经触发。
 
-## AI 状态联动（本地测试）
+## 状态和隐私说明
 
-Windows PowerShell 在该文件夹中执行（应用运行期间）：
+状态来自 AI 工具实际触发的 Hook 事件，并通过 `http://127.0.0.1:4173/api/state` 送到本机正在运行的 HachiOrb。历史事件不会回放；如果 Hook 触发时 HachiOrb 没有运行，小球不会收到那条状态。托盘菜单可查看各工具最近一次上报状态，以及当前监听端口。
+
+Codex 的状态由它提供的生命周期 Hook 触发，不代表读取模型内部思维过程。WorkBuddy 通过本地插件 Hook 接入。当前状态按工具维度汇总，因此同一个工具的多个并行对话不会分别显示。HachiOrb 不会自动批准权限请求，也不把状态内容发送到互联网。
+
+## 常见问题
+
+- **小球没出现：** 确认 `HachiOrb.exe` 仍在运行；也可以在系统托盘中查找 HachiOrb 图标并选择显示桌宠。
+- **AI 工作了但小球没变化：** 确认 HachiOrb 已运行，再运行一次安装器，完整退出并重启对应 AI 工具，然后用新的真实任务测试。检查安装器输出是否有错误。
+- **WorkBuddy 一直待机：** 确认安装器提示 WorkBuddy 插件已配置；检查 `node --version` 是否为 22 或更新版本；完全退出 WorkBuddy（包括托盘进程）后重启。
+- **连接测试通过但没有状态：** 连接测试只验证本地接口。还需要确认相应 AI 工具实际触发 Hook，并在 Hook 触发时保持 HachiOrb 运行。
+- **安装器提示配置格式不支持：** 它会保留原配置不变。查看同目录生成的备份，并根据错误提示手动合并后再重试。
+
+## 更新
+
+1. 退出 HachiOrb。
+2. 下载新版 ZIP 并完整解压到新的文件夹，保留文件夹内全部文件。
+3. 运行新版 `HachiOrb.exe`。如果新版包含 Hook 修复，再运行 `setup-agent-hooks-windows.bat` 并重启对应 AI 工具。
+
+## 从源码构建
+
+需要 Windows x64、Node.js 22+ 和网络连接：
 
 ```powershell
-.\examples\send-status.ps1 -State thinking -Task '正在分析估价报告' -Agent 'codex'
-.\examples\send-status.ps1 -State working -Task '正在执行代码修改' -Agent 'codex'
-.\examples\send-status.ps1 -State done -Task '任务已完成' -Agent 'codex'
-```
-
-也可在托盘中复制测试命令。API 接收以下 JSON（`progress` 可省略，不编造进度）：
-
-```json
-{"state":"thinking","task":"AI 正在思考","agent":"codex"}
-```
-
-状态映射：idle→02、thinking→30、working→32、done→33、error→34、sleep→00。也可以附带 `emotionId` 选择 32 个原版表情之一。API **仅监听本机 127.0.0.1**，不暴露到局域网。已提供 Codex/Cursor 的官方 Hook 适配文件与 Windows 安装器；Grok Bot 提供显式状态命令和可选社区 CLI 包装器（不承诺任意 GUI 活动的被动自动监控）。
-
-## Codex、Cursor、Grok Bot 一键/手动接入
-
-Windows 启动 HachiOrb 后，可先双击 `test-agent-connection-windows.bat` 检查本地接口，再双击 `setup-agent-hooks-windows.bat` 安装当前用户的 Codex、Cursor 和 WorkBuddy 状态 Hook。**新版安装器优先使用 Node.js，未安装 Node.js 时 PowerShell 兜底可配置 Codex/Cursor；WorkBuddy Hook 需要 Node.js 运行时**。已有第三方 Codex notify 不会覆盖；Cursor 其他 Hook 保留并备份。WorkBuddy 使用 `%USERPROFILE%\.workbuddy\settings.json` 的本地 Hook（需要重启 WorkBuddy）；Grok Bot 的当前自动化边界和可选 CLI 包装详见 [INTEGRATIONS.md](INTEGRATIONS.md)。
-
-## 开发和测试
-
-```bash
-node scripts/bootstrap.cjs    # 下载校验的原版动画，首次必需
-npm install --no-audit --no-fund
-npm start
+npm ci
+npm run fetch:engine
 npm test
+npm run pack:win
 ```
 
-`QuickPreview.html` 可不安装 Node 直接在浏览器中打开，但需要联网加载 Grok Ball 原版引擎；它只是预览，**不具备透明置顶和系统托盘**。
+便携构建目录为 `release/HachiOrb-win32-x64`，可执行文件为 `HachiOrb.exe`。发布时需将整个目录打成 ZIP。
 
-## 第三方协议与安全
+## v1.3.1 更新内容
 
-上游：https://github.com/TyCoding/grok-ball
+- 自动注册 WorkBuddy Desktop 的本地 HachiOrb Hook 插件，减少手动配置步骤。
+- 修复便携包缺少 Hook 安装脚本版本信息的问题。
+- 保持拖动小球时尺寸稳定。
+- 补充 Codex、Cursor、WorkBuddy 的安装、重启和排障说明。
 
-原始运行时固定于 Git 提交 `de368ce3acdc5a70e871ee46ebbe8f60b11d3d6a`，下载后校验 Git blob SHA-1 为 `9628dfce2cd35722dc472adde4defa24291b377f`；不匹配立即中止，避免执行未经验证脚本。源文件不在本包中提前伪造，运行启动脚本时会从上游获取。
+## 第三方项目和许可
 
-Grok Ball 版权所有 (c) 2026 tycoding，MIT License 见 `third_party/LICENSE.grok-ball`。本项目仅提供适配层，不代表 xAI/Grok 官方产品。
-
-Electron 作为运行容器，采用 `nodeIntegration:false`、`contextIsolation:true`、本地文件加载与 CSP。状态服务只绑定 localhost，外部网页不可跨域写入。请勿在任务文字中保存口令、API Key 或敏感个人信息。
-
-## 验证边界
-
-本次能在容器中运行 Node.js 自动测试和语法检查，但此环境无法下载 Windows Electron 二进制，也没有 Windows GUI。**“EXE 正常运行、置顶、透明、托盘、鼠标穿透”尚未在 Windows 真机验收**，应在你电脑上执行 `start-windows.bat` 验证。官方动画的浏览器效果可先在上游原版演示站或 `QuickPreview.html` 检查。
-
-## GitHub Releases：下载 Windows 便携版
-
-从 [GitHub Releases](https://github.com/AshinTop/hachiorb-desktop/releases) 下载 `HachiOrb-Windows-Portable.zip`，完整解压后运行 `HachiOrb.exe`。这不是单文件 EXE，必须保留解压目录里的依赖文件。仓库目前为 Private，只能由有权限的 GitHub 账号下载。当前构建无 Windows 代码签名，SmartScreen 可能显示未知发布者。
-
-**发布新版本：** 仓库 Actions → **Publish HachiOrb Windows Release** → **Run workflow** → 输入 `v1.3.0`。工作流只允许手动触发，打包结果直接发布到 GitHub Releases，不再使用 Actions Artifact 存储。工作流本身仍消耗 Actions 运行额度；如果在仓库设置中完全禁用 Actions，需改用本地 `build-windows.bat` 构建后手动上传 ZIP。
-
-> 当前尚未创建或验收 `v1.3.0` 安装包。Windows 真机验收通过前，自动发布工作流会把 Release 标为预发布版（Pre-release）。
-
-## v1.2.0 修复：拖动放大、复合通知器与 WorkBuddy Hook
-
-- 修复：拖动桌宠时使用固定的球体尺寸，结束拖动后校正窗口尺寸（包括不同 DPI 显示器之间移动）。
-- 修复：拖动过程不再切换更大的阴影，避免视觉上突然变大。
-- 修复：Windows Hook 安装器提供 PowerShell 兜底，无需 Node.js，并准确反馈安装成功/失败；不会覆盖已有第三方 notify。
-- 新增：`test-agent-connection-windows.bat` 可直接检测与正在运行的 HachiOrb 的本地连接。
-- 注意：以上是源码修改与静态/Node 测试，Windows 端的 PowerShell、Electron 真机交互需要最终验证。
-
-### Windows 安装修复与复合通知器
-
-- 拖动只改变位置；释放时校正窗口尺寸，拖动时阴影不再放大。
-- 双击 `setup-agent-hooks-windows.bat`：优先 Node.js 复合通知器、无 Node 环境 PowerShell 等效方案；保留原 Codex `notify` 并先运行它，再调用桌宠。
-- 已有配置将生成带时间戳的 `.hachiorb-backup-*` 备份。遇到复杂/无法安全解析的配置不会强行覆盖，须手动检查。
-- Windows 便携版打包额外导出 BAT/安装脚本到与 `HachiOrb.exe` 同级的目录。
-- Codex 完成事件只在任务轮次结束触发，不能实时显示所有思考/工作步骤。
-
-### WorkBuddy 桌面版
-
-新版安装器支持 `%USERPROFILE%\.workbuddy\settings.json` 的本地 Hook：`SessionStart`、`UserPromptSubmit`、`PreToolUse`、`PostToolUse`、`PermissionRequest`、`Notification`、`Stop`、`SessionEnd`。会先备份并保留原有 Hook；重复安装不会重复追加同一指令。必须完全退出 WorkBuddy 再重启，使用真实项目任务测试。仅发送状态类型、固定短标签，不读取或上传 prompt、聊天正文、工具参数或密钥。此功能基于桌面版社区实测，仍需你的 Windows 版本验证，详见 [INTEGRATIONS.md](INTEGRATIONS.md)。
-
-## v1.3.0：多 Agent 状态与 WorkBuddy 等待提醒
-
-- **统一监听四种 Agent 的已上报事件**：每种 Agent 分别维护最后一条状态，`GET /api/state` 新增 `agents`（最近状态数组）及当前聚焦的 `agent`、`state`、`attention`。这些是 Hook/CLI 的**事件记录**，并不证明进程当前在线。
-- **智能选取桌宠当前展示**：等待授权/回答优先于普通工作中；工作中的 Agent 优先于其他 Agent 的待机或本轮完成。工作状态超过 20 分钟无新事件不再继续宣称工作中；等待提醒 10 分钟后过期；完成/错误状态 20 秒后过期；手动切换表情展示约 8 秒。进入托盘“**四个 Agent 最近状态**”可以查看每个通道最后一次上报状态。
-- **WorkBuddy 重要状态**：`PermissionRequest` 和 `Notification.permission_prompt` 显示「WorkBuddy · 等待授权」；`Notification.idle_prompt` 显示「WorkBuddy · 等待回答」，使用 Grok Ball `35` 号等待表情。不读取任务正文或敏感数据；**不会代替用户自动批准任何权限**。
-- **轻量常驻标签**：小球下方显示当前 Agent 名称和状态，右键托盘可关闭。没有在球周围增加装饰框；高频重复状态不会重新启动相同表情的动画。
-- **Codex 限制**：官方 `notify` 目前只有本轮结束事件，不会据此虚构思考/编辑中的实时状态。**Grok Bot 限制**：现阶段只有显式上报或 CLI 包装器，不包含任意桌面 Grok Bot 的被动监控。
-- **多会话限制**：当前按 Agent 产品维度保存最后一次状态，不识别同一个 Agent 的多个并发会话；后续如 Hook 提供稳定的会话标识才考虑会话级跟踪。
-
-**升级后操作**：更新 GitHub 源码或下载新发布包，重新启动 HachiOrb。已装好 Hook 通常不用重装；如果 WorkBuddy/Cursor 状态未更新，再运行 `setup-agent-hooks-windows.bat` 并重启 WorkBuddy。Windows GUI/具体 WorkBuddy 版本仍需你本机验收；自动测试只证明事件解析和状态选择逻辑。
+动画引擎来自 [TyCoding/grok-ball](https://github.com/TyCoding/grok-ball)，许可证见仓库中的 `third_party/LICENSE.grok-ball`。HachiOrb 是社区项目，不代表 xAI、OpenAI、Cursor 或 WorkBuddy 官方产品。
