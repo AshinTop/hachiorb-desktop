@@ -90,4 +90,8 @@ npm run pack:win
 - 修复拖动小球时尺寸变化的问题。
 - 补充 Codex、Cursor、WorkBuddy 的安装步骤、重启说明和故障排查。
 
-动画引擎来自 [TyCoding/grok-ball](https://github.com/TyCoding/grok-ball)，其 MIT 许可证见 [`third_party/LICENSE.grok-ball`](third_party/LICENSE.grok-ball)。HachiOrb 是社区项目，不代表 xAI、OpenAI、Cursor 或 WorkBuddy 官方产品。
+## 致谢
+
+感谢 [Grok Ball Pro](https://github.com/AshinTop/grok-ball-pro) 项目——这是 HachiOrb 作者维护的 SVG 表情球项目，也是 [TyCoding/grok-ball](https://github.com/TyCoding/grok-ball) 的 fork。
+
+HachiOrb 当前使用经固定提交和校验的 Grok Ball 原版动画运行时；原始代码的 MIT 许可证与版权信息见 [`third_party/LICENSE.grok-ball`](third_party/LICENSE.grok-ball)。HachiOrb 是社区项目，不代表 xAI、OpenAI、Cursor 或 WorkBuddy 官方产品。
