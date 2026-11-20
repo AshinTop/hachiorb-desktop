@@ -6,5 +6,14 @@ body{display:flex;align-items:center;justify-content:center;font-family:Segoe UI
 #orb.dragging{cursor:grabbing;/* Keep the same silhouette while dragging: no larger shadow/scale. */filter:drop-shadow(0 8px 15px rgba(0,0,0,.22))}
 #orb svg{display:block;width:100%!important;height:100%!important;overflow:visible!important}
 #loading{font-size:11px;letter-spacing:.15em;text-align:center;padding-top:44%;color:#8b8f99}
+#thinking-bulb{position:absolute;z-index:2;top:3%;right:4%;width:22%;max-width:56px;aspect-ratio:1;display:grid;place-items:center;border:1px solid rgba(255,224,143,.55);border-radius:50%;background:radial-gradient(circle at 50% 42%,rgba(95,74,28,.94),rgba(24,25,28,.94) 72%);box-shadow:0 0 8px rgba(255,205,85,.3),0 0 20px rgba(255,190,58,.2);pointer-events:none;transform-origin:center}
+#thinking-bulb[hidden]{display:none}
+#thinking-bulb:not([hidden]){animation:thinking-bulb-pulse 1.7s ease-in-out infinite}
+#thinking-bulb svg{display:block;width:68%;height:68%;overflow:visible;filter:drop-shadow(0 0 4px rgba(255,219,105,.75))}
+.bulb-rays{fill:none;stroke:#ffe28a;stroke-width:2.4;stroke-linecap:round}
+.bulb-glass{fill:#ffd85f;stroke:#fff0af;stroke-width:1.4;stroke-linejoin:round}
+.bulb-base{fill:none;stroke:#fff0af;stroke-width:2.5;stroke-linecap:round}
+@keyframes thinking-bulb-pulse{0%,100%{transform:translateY(1px) scale(.96);box-shadow:0 0 7px rgba(255,205,85,.25),0 0 15px rgba(255,190,58,.14)}50%{transform:translateY(-2px) scale(1.04);box-shadow:0 0 12px rgba(255,220,105,.5),0 0 24px rgba(255,190,58,.32)}}
+@media(prefers-reduced-motion:reduce){#thinking-bulb:not([hidden]){animation:none}}
 #label{position:absolute;bottom:0;left:50%;transform:translateX(-50%);max-width:85%;padding:3px 10px;background:rgba(15,17,23,.87);color:#e2e7ef;border:0;border-radius:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px;pointer-events:none;opacity:.86;transition:opacity .2s}
 body:hover #label:not([hidden]){opacity:1}

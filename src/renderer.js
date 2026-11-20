@@ -2,6 +2,7 @@
 (() => {
  const mount=document.getElementById('orb');
  const label=document.getElementById('label');
+ const thinkingBulb=document.getElementById('thinking-bulb');
  const load=document.getElementById('loading');
  if(!window.GrokBall){load.textContent='原版 Grok Ball 未安装';return;}
  let ball;
@@ -13,6 +14,7 @@
   if(!status||typeof status.emotionId!=='string')return;
   if(current.emotionId!==status.emotionId)ball.setEmotion(status.emotionId);
   current=status;
+  thinkingBulb.hidden=status.state!=='thinking';
   label.textContent=`${window.HachiStatus.agentName(status.agent)} · ${window.HachiStatus.stateName(status)}`;
   label.hidden=!showStatus;
   label.setAttribute('aria-label',label.textContent);
