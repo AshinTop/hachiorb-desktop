@@ -7,8 +7,8 @@ test('six agent states map to correct original Grok emotion IDs',()=>{
  const map={idle:'02',thinking:'30',working:'32',done:'33',error:'34',sleep:'00'};
  for(const [state,id] of Object.entries(map))assert.equal(validate({state}).emotionId,id);
 });
-test('all 32 upstream emotion IDs accepted and mapped',()=>{
- assert.equal(EMOTIONS.size,32);
+test('all 42 Grok Ball Pro emotion IDs accepted and mapped',()=>{
+ assert.equal(EMOTIONS.size,42);
  for(const id of EMOTIONS){assert.ok(EMOTION_STATE[id]);assert.equal(validate({state:'idle',emotionId:id}).emotionId,id)}
 });
 test('invalid inputs rejected, text fields bounded',()=>{

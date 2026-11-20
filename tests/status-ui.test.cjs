@@ -37,5 +37,5 @@ test('Windows release remains manual-only and does not use Actions artifacts',()
  assert.match(workflow,/workflow_dispatch:/);
  assert.doesNotMatch(workflow,/^\s+push:/m);
  assert.doesNotMatch(workflow,/upload-artifact/);
- assert.match(workflow,/default: 'v1\.3\.0'/);
+ assert.match(workflow,/default: 'v1\.4\.0'/);
 });

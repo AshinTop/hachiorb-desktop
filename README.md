@@ -10,12 +10,14 @@ HachiOrb 是 Windows 桌面悬浮宠物（desktop pet），也为 **Codex、Curs
 
 > 上图为功能示意图，不是应用运行截图；状态卡片用于展示支持的事件类型。
 
+**球体选择：** 在小球右键菜单或系统托盘选择「切换球体（9 款 · Grok Ball Pro）」，可以在经典白/黑球、五月天五色球、两款卜卜之间切换。切球不会重置表情与 Agent 状态；选择会保存在用户设置中，下次启动自动恢复。
+
 ## 功能一览
 
 | 功能 | 说明 |
 |---|---|
-| **HachiOrb Windows 桌面宠物** | HachiOrb 提供无边框、透明背景的悬浮小球，可拖到桌面任意位置；支持鼠标跟随、轻点旋转、32 种表情和托盘设置。 |
-| **桌面交互** | 鼠标移动时眼睛跟随；轻点旋转；托盘菜单提供 32 种表情、尺寸、置顶、鼠标穿透、隐藏和退出。 |
+| **HachiOrb Windows 桌面宠物** | HachiOrb 提供无边框、透明背景的悬浮小球，可拖到桌面任意位置；支持鼠标跟随、轻点旋转、42 种表情、9 款可保存的球体和托盘设置。 |
+| **桌面交互** | 鼠标移动时眼睛跟随；轻点旋转；托盘菜单提供 9 款球体、42 种表情、尺寸、置顶、鼠标穿透、隐藏和退出。 |
 | **AI Agent 状态监控** | 通过 Hook 接入 Codex、Cursor、WorkBuddy；支持 thinking、working、等待授权、完成和错误等状态事件。Grok Bot 可显式发送状态。 |
 | **多工具并行状态** | 不同 AI 工具分别保留最近状态；托盘可查看各工具的最近上报记录。 |
 | **本机优先和隐私** | 状态接口绑定 `127.0.0.1`；Hook 只发状态类型和固定短标签，不读取或上传提示词、聊天正文、代码、工具参数或密钥。 |
@@ -28,7 +30,7 @@ HachiOrb 是 Windows 桌面悬浮宠物（desktop pet），也为 **Codex、Curs
 
 ## 下载和安装 Windows 便携版
 
-从 [GitHub Releases](https://github.com/AshinTop/hachiorb-desktop/releases/latest) 下载 `HachiOrb-1.3.1-win32-x64.zip`。此版本是 **Windows x64 便携包**，没有安装向导。
+从 [GitHub Releases](https://github.com/AshinTop/hachiorb-desktop/releases/latest) 下载与当前发布版本对应的 Windows x64 ZIP（v1.4.0 正式发布后文件名为 `HachiOrb-1.4.0-win32-x64.zip`）。它是**便携包**，没有安装向导。
 
 1. 将 ZIP **完整解压**到固定目录，例如 `C:\Apps\HachiOrb`。不要直接在压缩包里运行，也不要只复制 `HachiOrb.exe`；程序运行依赖必须和 EXE 放在一起。
 2. 双击解压目录中的 `HachiOrb.exe`。桌面会出现动态表情球，系统托盘会显示 HachiOrb 图标。
@@ -54,7 +56,7 @@ HachiOrb 是 Windows 桌面悬浮宠物（desktop pet），也为 **Codex、Curs
 
 AI Hook 把事件发送到本机状态接口 `http://127.0.0.1:4173/api/state`。若默认端口已占用，HachiOrb 会尝试 `4174` 或 `4175`，实际端口可从系统托盘查看。只有 HachiOrb 正在运行时才能收到新的事件；之前发生的事件不会回放。
 
-Hook 仅用于传递 Agent 状态，不读取或上传提示词、聊天正文、生成代码、工具参数或密钥。首次启动可能联网下载经校验的上游动画引擎；后续缓存后可以离线运行。
+Hook 仅用于传递 Agent 状态，不读取或上传提示词、聊天正文、生成代码、工具参数或密钥。首次启动可能联网下载经 SHA-1 校验的 Grok Ball Pro 固定版本动画引擎；后续缓存后可以离线运行。
 
 ## 常见问题
 
@@ -83,19 +85,16 @@ npm run pack:win
 
 便携构建目录是 `release/HachiOrb-win32-x64`，其中的 `HachiOrb.exe` 需要与整个目录一起分发。
 
-## v1.3.1
+## 版本更新记录
 
-- 自动注册 WorkBuddy Desktop 的 HachiOrb 本地 Hook 插件，减少手动设置步骤。
-- 修复便携包中 Hook 安装脚本缺少版本信息的问题。
-- 修复拖动小球时尺寸变化的问题。
-- 补充 Codex、Cursor、WorkBuddy 的安装步骤、重启说明和故障排查。
+历次功能变化与 Bug 修复统一记录在 [CHANGELOG.md](CHANGELOG.md)，README 不再按版本列更新明细。
 
 ## 致谢
 
 感谢 [Grok Ball Pro](https://github.com/AshinTop/grok-ball-pro) 项目——这是 HachiOrb 作者维护的 SVG 表情球项目，也是 [TyCoding/grok-ball](https://github.com/TyCoding/grok-ball) 的 fork。Grok Ball Pro 自身的许可见其 [MIT License](https://github.com/AshinTop/grok-ball-pro/blob/main/LICENSE)。
 
-HachiOrb 当前使用经固定提交和校验的 Grok Ball 原版动画运行时；这部分保留上游 `tycoding` 的 MIT 许可证与版权信息，见 [`third_party/LICENSE.grok-ball`](third_party/LICENSE.grok-ball)。HachiOrb 是社区项目，不代表 xAI、OpenAI、Cursor 或 WorkBuddy 官方产品。
+HachiOrb v1.4.0 使用经固定提交和校验的 Grok Ball Pro SVG 动画运行时（9 款球体、42 种表情）；继承的上游实现保留 `tycoding` 的 MIT 许可证与版权信息，见 [`third_party/LICENSE.grok-ball`](third_party/LICENSE.grok-ball)。HachiOrb 是社区项目，不代表 xAI、OpenAI、Cursor 或 WorkBuddy 官方产品。
 
 ## 开源许可
 
-HachiOrb 自有代码以 MIT License 发布，允许使用、修改、再发布和商业使用；分发时须保留版权声明与许可文本。完整条款见根目录 [`LICENSE`](LICENSE)。第三方代码仍适用各自的许可证与版权声明，不因 HachiOrb 的许可而改变。
+HachiOrb 自有代码以 MIT License 发布，允许使用、修改、再发布和商业使用；分发时须保留版权声明与许可文本。完整条款见根目录 [`LICENSE`](LICENSE)。第三方代码仍适用各自的许可证与版权声明，不因 HachiOrb 的许可而改变。Pro 版的五月天与卜卜造型属于非官方同人创作，MIT 代码许可不意味着获得相关品牌、角色、音乐或商标的商业使用权。

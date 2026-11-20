@@ -5,16 +5,18 @@ const {version}=require('../package.json');
 const STATES = Object.freeze(['idle','thinking','working','done','error','sleep']);
 const EMOTIONS = new Set([
  '00','01','02','03','04','05','06','07',
- '10','11','12','13','14','15','16','17','18','19','20','21',
- '30','31','32','33','34','35','36','37','38','39','40','41'
+ '10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25',
+ '30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47'
 ]);
 const DEFAULT_EMOTION = Object.freeze({idle:'02',thinking:'30',working:'32',done:'33',error:'34',sleep:'00'});
 const EMOTION_STATE = Object.freeze({
  '00':'sleep','01':'idle','02':'idle','03':'idle','04':'idle','05':'thinking','06':'sleep','07':'idle',
  '10':'done','11':'idle','12':'error','13':'idle','14':'idle','15':'sleep','16':'working',
  '17':'error','18':'idle','19':'done','20':'thinking','21':'error',
+ '22':'done','23':'idle','24':'idle','25':'done',
  '30':'thinking','31':'working','32':'working','33':'done','34':'error','35':'idle',
- '36':'thinking','37':'thinking','38':'error','39':'working','40':'thinking','41':'idle'
+ '36':'thinking','37':'thinking','38':'error','39':'working','40':'thinking','41':'idle',
+ '42':'done','43':'idle','44':'working','45':'idle','46':'error','47':'done'
 });
 const noop = () => {};
 function validate(input) {

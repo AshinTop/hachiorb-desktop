@@ -5,6 +5,7 @@ const fs=require('node:fs');
 const {createBridge,EMOTION_STATE}=require('./bridge.cjs');
 const {agentName,stateName}=require('./status-display.js');
 const {verified}=require('../scripts/bootstrap.cjs');
+const {BODIES,validBody,normalizeBody,bodyName}=require('./ball-catalog.cjs');
 const {clampPosition,dragPosition,fixedBounds}=require('./drag-geometry.cjs');
 const ROOT=path.resolve(__dirname,'..');
 const UPSTREAM=path.join(ROOT,'vendor/grok-ball.js');
@@ -13,15 +14,17 @@ const LABELS={idle:'待机',thinking:'思考',working:'工作',done:'完成',err
 const EMO_GROUPS={
  'AI 工作状态':[['30','思考中'],['31','接收任务'],['32','处理中'],['33','任务完成'],['34','出错'],['35','等待输入'],['36','联网加载'],['37','复述回忆'],['38','受限'],['39','输出回复'],['40','检索资料'],['41','停止']],
  '情绪':[['10','开心'],['11','疑惑'],['12','失落'],['13','惊讶'],['14','害羞'],['15','疲惫'],['16','专注'],['17','慌张'],['18','无奈'],['19','满意'],['20','困惑'],['21','生气']],
+ 'Pro 专属表情':[['22','星光眼'],['23','俏皮眨眼'],['24','哇哦'],['25','心动'],['42','白眉笑'],['43','放空'],['44','认真脸'],['45','探头看看'],['46','委屈巴巴'],['47','笑出眼泪']],
  '待机与休眠':[['00','睡眠'],['01','唤醒'],['02','待机'],['03','好奇'],['04','发呆'],['05','加载苏醒'],['06','休眠'],['07','抖动唤醒']]
 };
-const DEFAULTS={size:260,x:null,y:null,alwaysOnTop:true,followCursor:true,showStatus:true,locked:false,autostart:false};
+const DEFAULTS={size:260,body:'classic',x:null,y:null,alwaysOnTop:true,followCursor:true,showStatus:true,locked:false,autostart:false};
 let settings,windowPet=null,tray=null,api=null,bridge=null,dragSession=null,lastPointerIgnore=false;
 let cursorTimer=null,statusTimer=null,savePath='';
 function saveSettings(){try{fs.writeFileSync(savePath,JSON.stringify(settings,null,2))}catch(e){console.warn('Settings not saved',e.message)}}
 function loadSettings(){
  try{const data=JSON.parse(fs.readFileSync(savePath,'utf8'));return {...DEFAULTS,
   size:SIZES.includes(data.size)?data.size:260,
+  body:normalizeBody(data.body),
   x:Number.isInteger(data.x)?data.x:null,y:Number.isInteger(data.y)?data.y:null,
   alwaysOnTop:typeof data.alwaysOnTop==='boolean'?data.alwaysOnTop:true,
   followCursor:typeof data.followCursor==='boolean'?data.followCursor:true,
@@ -56,6 +59,11 @@ function changeEmotion(id){
  bridge.commit({state,emotionId:id,task:'手动表情',agent:'manual'});
 }
 function changeState(state){bridge.commit({state,task:'手动切换',agent:'manual'});}
+function changeBody(body){
+ if(!validBody(body)||body===settings.body)return;
+ // Body selection is independent of Agent status and emotion.
+ settings.body=body;applySettings();
+}
 function changeSize(size){
  if(!windowPet || windowPet.isDestroyed())return;
  const b=windowPet.getBounds();const pos=boundPosition(Math.round(b.x+(b.width-size)/2),Math.round(b.y+(b.height-size)/2),size);
@@ -80,8 +88,9 @@ function makeMenu(){
   {label:'眼睛跟随全桌面鼠标',type:'checkbox',checked:settings.followCursor,click:i=>{settings.followCursor=i.checked;applySettings()}},
   {label:'显示 Agent 名称与状态',type:'checkbox',checked:settings.showStatus,click:i=>{settings.showStatus=i.checked;applySettings()}},
   {type:'separator'},
+  {label:'切换球体（9 款 · Grok Ball Pro）',submenu:BODIES.map(b=>({label:b.name,type:'radio',checked:settings.body===b.id,click:()=>changeBody(b.id)}))},
   {label:'快速切换',submenu:Object.keys(LABELS).map(s=>({label:LABELS[s],click:()=>changeState(s)}))},
-  {label:'32 种原版表情',submenu:Object.entries(EMO_GROUPS).map(([label,entries])=>({label,submenu:entries.map(([id,name])=>({label:`${id}  ${name}`,click:()=>changeEmotion(id)}))}))},
+  {label:'42 种表情（经典 + Pro）',submenu:Object.entries(EMO_GROUPS).map(([label,entries])=>({label,submenu:entries.map(([id,name])=>({label:`${id}  ${name}`,click:()=>changeEmotion(id)}))}))},
   {label:'球体大小',submenu:SIZES.map(n=>({label:`${n} px`,type:'radio',checked:settings.size===n,click:()=>changeSize(n)}))},
   {label:'恢复右下角默认位置',click:()=>{const p=defaultPosition();windowPet.setPosition(p.x,p.y);settings.x=p.x;settings.y=p.y;saveSettings()}},
   {type:'separator'},
@@ -97,7 +106,7 @@ function makeMenu(){
  ];
  return Menu.buildFromTemplate(items);
 }
-function refreshTray(){if(tray&&!tray.isDestroyed()){const status=bridge?.getState();tray.setContextMenu(makeMenu());tray.setToolTip(`HachiOrb · ${agentName(status?.agent)} · ${stateName(status)}`)}}
+function refreshTray(){if(tray&&!tray.isDestroyed()){const status=bridge?.getState();tray.setContextMenu(makeMenu());tray.setToolTip(`HachiOrb · ${bodyName(settings.body)} · ${agentName(status?.agent)} · ${stateName(status)}`)}}
 function showContextMenu(){if(windowPet&&!windowPet.isDestroyed())makeMenu().popup({window:windowPet})}
 function setupIPC(){
  ipcMain.handle('hachi:ready',()=>({state:bridge.getState(),settings:{...settings},apiPort:api}));
@@ -136,7 +145,7 @@ async function setupApp(){
  savePath=path.join(app.getPath('userData'),'settings.json');settings=loadSettings();
  const runtime=fs.existsSync(UPSTREAM)?fs.readFileSync(UPSTREAM):null;
  if(!runtime||!verified(runtime)){
-  dialog.showErrorBox('缺少原版 Grok Ball 动画','请先运行 start-windows.bat。它会校验并下载 TyCoding 原版引擎，之后可以离线使用。');
+  dialog.showErrorBox('缺少 Grok Ball Pro 动画','请先运行 start-windows.bat。它会校验并下载 AshinTop/grok-ball-pro 固定版本引擎，之后可以离线使用。');
   app.quit();return;
  }
  bridge=createBridge(sendState);

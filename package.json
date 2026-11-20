@@ -1,8 +1,8 @@
 {
   "name": "hachiorb-desktop",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "private": true,
-  "description": "Grok Ball original-engine floating desktop companion for Windows",
+  "description": "Grok Ball Pro nine-body floating desktop companion for Windows",
   "main": "src/main.cjs",
   "author": "HachiOrb contributors, based on Grok Ball by tycoding (MIT)",
   "license": "MIT",

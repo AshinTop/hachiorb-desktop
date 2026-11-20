@@ -6,10 +6,16 @@
  const load=document.getElementById('loading');
  if(!window.GrokBall){load.textContent='原版 Grok Ball 未安装';return;}
  let ball;
- try{ball=window.GrokBall.create(mount,{emotion:'02'});}catch(e){load.textContent='动画初始化失败';console.error(e);return;}
+ try{ball=window.GrokBall.create(mount,{emotion:'02',body:'classic'});}catch(e){load.textContent='动画初始化失败';console.error(e);return;}
  load.remove();
  let current={state:'idle',emotionId:'02',task:'等待新任务',agent:'manual'};
- let gazeEnabled=true,locked=false,showStatus=true,dragging=false,moved=false,downX=0,downY=0,lastMove=0;
+ let gazeEnabled=true,locked=false,showStatus=true,selectedBody='classic',dragging=false,moved=false,downX=0,downY=0,lastMove=0;
+ function applyBody(settings){
+  const next=settings?.body;
+  if(typeof next!=='string'||next===selectedBody)return;
+  if(typeof ball.setBody!=='function'){console.error('Grok Ball Pro setBody API unavailable');return;}
+  if(ball.setBody(next))selectedBody=next;
+ }
  function updateStatus(status){
   if(!status||typeof status.emotionId!=='string')return;
   if(current.emotionId!==status.emotionId)ball.setEmotion(status.emotionId);
@@ -25,13 +31,14 @@
   ball.setGaze(point.nx,point.ny);
  });
  window.hachi.onSettings(settings=>{
+  applyBody(settings);
   gazeEnabled=!!settings.followCursor;
   locked=!!settings.locked;
   showStatus=settings.showStatus!==false;
   label.hidden=!showStatus;
   if(!gazeEnabled)ball.clearGaze();
  });
- window.hachi.ready().then(({state,settings})=>{showStatus=settings.showStatus!==false;updateStatus(state);gazeEnabled=settings.followCursor;locked=settings.locked;});
+ window.hachi.ready().then(({state,settings})=>{applyBody(settings);showStatus=settings.showStatus!==false;updateStatus(state);gazeEnabled=settings.followCursor;locked=settings.locked;});
  mount.addEventListener('pointerdown',e=>{
   if(e.button!==0 || locked)return;
   downX=e.screenX;downY=e.screenY;moved=false;dragging=true;lastMove=0;

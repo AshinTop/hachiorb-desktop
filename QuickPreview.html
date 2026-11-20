@@ -1,21 +1,27 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>HachiOrb - Grok Ball 原版桌宠预览</title>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HachiOrb · Grok Ball Pro</title>
 <style>
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:system-ui,'Microsoft YaHei',sans-serif;color:#dde0e6;background:#0e1118}body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 20px;gap:24px;background:radial-gradient(ellipse at 50% 45%,#29303b,#11151d 55%,#0c0f15)}
-h1{font-size:14px;letter-spacing:.12em;font-weight:600;color:#a1a9ba;margin:0}#orb{width:min(72vw,62vh,350px);height:min(72vw,62vh,350px);display:grid;place-items:center;cursor:pointer;filter:drop-shadow(0 15px 25px rgba(0,0,0,.2))}#orb svg{width:100%;height:100%;overflow:visible}#message{color:#9fa8b7;font-size:12px}nav{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;max-width:550px}button{border:1px solid #353e4c;border-radius:20px;background:#202631;color:#dce0e5;min-height:34px;padding:5px 12px;cursor:pointer}button.on{background:#dce0e5;color:#222833}small{font-size:11px;color:#747e90;text-align:center;line-height:1.8}a{color:#b0d0e9}
-</style></head><body>
-<h1>H A C H I O R B · 原版 Grok Ball 动画</h1>
-<div id="orb"></div><div id="message">正在加载 TyCoding 原版 Grok Ball …</div><nav id="buttons"></nav>
-<small>点击球体旋转 · 移动鼠标，眼睛会跟随<br/>此页面是浏览器预览；真正无边框悬浮需运行 Windows 组件。<a href="https://github.com/TyCoding/grok-ball">Grok Ball · MIT</a></small>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% 38%,#293342,#0e111a 66%);color:#e6e9ef;font:14px system-ui,Microsoft YaHei,sans-serif;display:grid;place-items:center;padding:28px}main{width:min(100%,640px);text-align:center}h1{font-size:19px;margin:0 0 6px}p{font-size:12px;color:#a6b2c4}#orb{width:min(75vw,350px);height:min(75vw,350px);margin:10px auto 18px;cursor:pointer}#orb svg{width:100%;height:100%;overflow:visible}.buttons{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin:10px 0 18px}button{border:1px solid #485469;color:#e6e9ef;border-radius:18px;background:#232d3b;padding:8px 12px;cursor:pointer}button[aria-pressed="true"]{background:#d4dde9;color:#0c1420}#status{min-height:22px;color:#a6b2c4}a{color:#b7d9f2}
+</style></head><body><main>
+<h1>HachiOrb · Grok Ball Pro</h1><p>原生 Pro SVG 引擎 · 球体和表情独立切换。透明桌面窗口及系统托盘需运行 Windows 版。</p>
+<div id="orb" title="点击球体旋转"></div><div id="status">加载 Grok Ball Pro …</div>
+<p>选择球体（9 款）</p><div id="body-list" class="buttons"></div>
+<p>选择表情（示例；正式版支持 42 种）</p><div id="emotion-list" class="buttons"></div>
+<p><a href="https://github.com/AshinTop/grok-ball-pro">Grok Ball Pro · MIT</a></p>
 <script>
-const urls=['https://cdn.jsdelivr.net/gh/TyCoding/grok-ball@de368ce3acdc5a70e871ee46ebbe8f60b11d3d6a/src/grok-ball.js','https://raw.githubusercontent.com/TyCoding/grok-ball/de368ce3acdc5a70e871ee46ebbe8f60b11d3d6a/src/grok-ball.js'];
-function load(src){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=()=>resolve();s.onerror=()=>reject(new Error(src));document.head.appendChild(s)})}
-(async()=>{for(const url of urls){try{await load(url);if(window.GrokBall)break}catch{}}
-if(!window.GrokBall){document.getElementById('message').textContent='网络无法加载原版引擎。请联网，或使用 Windows 启动脚本下载本地版。';return;}
-const ball=GrokBall.create('#orb',{emotion:'02'}),states=[['02','待机'],['03','好奇'],['10','开心'],['30','思考'],['32','工作'],['33','完成'],['34','出错'],['00','睡眠']];const menu=document.getElementById('buttons');
-for(const [id,name] of states){const b=document.createElement('button');b.textContent=name;b.className=id==='02'?'on':'';b.onclick=()=>{ball.setEmotion(id);menu.querySelectorAll('button').forEach(x=>x.className='');b.className='on';document.getElementById('message').textContent='当前表情：'+name};menu.append(b)}
-const m=document.getElementById('orb');m.addEventListener('click',()=>ball.spin(1));window.addEventListener('pointermove',e=>{const r=m.getBoundingClientRect();ball.setGaze(Math.max(-1,Math.min(1,(e.clientX-r.left-r.width/2)/(r.width*.85))),Math.max(-1,Math.min(1,(e.clientY-r.top-r.height/2)/(r.height*.85))))});
-document.getElementById('message').textContent='原版引擎已加载 · 请选择表情';
+const urls=['https://cdn.jsdelivr.net/gh/AshinTop/grok-ball-pro@308db672da87402a2997a97306f4151eac2fcada/src/grok-ball.js','https://raw.githubusercontent.com/AshinTop/grok-ball-pro/308db672da87402a2997a97306f4151eac2fcada/src/grok-ball.js'];
+const status=document.getElementById('status');
+function load(src){return new Promise((ok,fail)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=fail;document.head.appendChild(s)})}
+(async()=>{
+ for(const src of urls){try{await load(src);if(window.GrokBall?.BODIES?.length===9)break}catch{}}
+ if(!window.GrokBall?.BODIES || typeof window.GrokBall.create!=='function'){status.textContent='Pro 引擎加载失败，请联网或运行 Windows 启动脚本';return;}
+ const engine=GrokBall.create('#orb',{body:'classic',emotion:'02'});
+ function controls(target,options,onSelect){const el=document.getElementById(target);for(const [id,name] of options){const b=document.createElement('button');b.textContent=name;b.setAttribute('aria-pressed',id===options[0][0]?'true':'false');b.onclick=()=>{onSelect(id);el.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true')};el.append(b)}}
+ controls('body-list',GrokBall.BODIES.map(b=>[b.id,b.name]),id=>{engine.setBody(id);status.textContent='球体：'+GrokBall.BODIES.find(b=>b.id===id).name});
+ controls('emotion-list',[['02','待机'],['10','开心'],['22','星光眼'],['25','心动'],['30','思考'],['32','工作'],['33','完成'],['47','笑出眼泪']],id=>engine.setEmotion(id));
+ document.getElementById('orb').addEventListener('click',()=>engine.spin(1));
+ window.addEventListener('pointermove',e=>{const r=document.getElementById('orb').getBoundingClientRect();engine.setGaze(Math.max(-1,Math.min(1,(e.clientX-r.left-r.width/2)/(r.width*.85))),Math.max(-1,Math.min(1,(e.clientY-r.top-r.height/2)/(r.height*.85))))});
+ status.textContent='原版 Pro 动画已加载 · 9 款球体 · 42 种表情';
 })();
-</script></body></html>
+</script></main></body></html>
