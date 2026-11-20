@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release tag (e.g. v1.3.0)'
+        description: 'Release tag (e.g. v1.3.1)'
         required: true
-        default: 'v1.3.0'
+        default: 'v1.3.1'
         type: string
 
 permissions:
@@ -27,7 +27,11 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           if ($env:RELEASE_VERSION -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') {
-            throw 'Version must look like v1.3.0'
+            throw 'Version must look like v1.3.1'
+          }
+          $packageVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:RELEASE_VERSION -ne "v$packageVersion") {
+            throw "Release tag $env:RELEASE_VERSION does not match package.json version $packageVersion"
           }
       - name: Fetch verified original Grok Ball
         run: node scripts/bootstrap.cjs
@@ -42,9 +46,11 @@ jobs:
         run: |
           $exe = 'release/HachiOrb-win32-x64/HachiOrb.exe'
           if (-not (Test-Path $exe)) { throw 'Windows executable was not generated.' }
-          Compress-Archive -Path 'release/HachiOrb-win32-x64/*' -DestinationPath 'HachiOrb-Windows-Portable.zip' -Force
-          $hash = (Get-FileHash 'HachiOrb-Windows-Portable.zip' -Algorithm SHA256).Hash.ToLowerInvariant()
-          Set-Content -Path 'HachiOrb-Windows-Portable.zip.sha256' -Value "$hash  HachiOrb-Windows-Portable.zip" -Encoding ascii
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $zipName = "HachiOrb-$version-win32-x64.zip"
+          Compress-Archive -Path 'release/HachiOrb-win32-x64/*' -DestinationPath $zipName -Force
+          $hash = (Get-FileHash $zipName -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -Path "$zipName.sha256" -Value "$hash  $zipName" -Encoding ascii
       - name: Publish directly to GitHub Releases (no Actions artifact)
         shell: pwsh
         env:
@@ -52,11 +58,14 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           $version = $env:RELEASE_VERSION
-          $assets = @('HachiOrb-Windows-Portable.zip', 'HachiOrb-Windows-Portable.zip.sha256')
+          $versionNumber = $version.TrimStart('v')
+          $zipName = "HachiOrb-$versionNumber-win32-x64.zip"
+          $assets = @($zipName, "$zipName.sha256")
           gh release view $version --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $version $assets --clobber --repo $env:GITHUB_REPOSITORY
           } else {
-            gh release create $version $assets --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "HachiOrb Desktop $version" --notes 'Windows x64 portable ZIP. Extract the entire archive before running HachiOrb.exe. Unsigned personal build; review code and verify SHA-256 before use.' --prerelease
+            gh release create $version $assets --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "HachiOrb Desktop $version" --notes 'Windows x64 portable ZIP. Extract the entire archive and keep all files together before running HachiOrb.exe. Install Node.js 22+ to set up Codex, Cursor, and WorkBuddy hooks. The build is unsigned and marked pre-release pending clean-machine verification.' --prerelease
           }
           if ($LASTEXITCODE -ne 0) { throw 'Publishing to GitHub Release failed.' }
+
