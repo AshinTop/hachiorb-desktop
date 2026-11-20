@@ -29,6 +29,9 @@ test('Hook handler uses loopback only and returns continue JSON to Cursor',()=>{
  assert.doesNotMatch(ps,/Invoke-RestMethod/i);
  assert.match(ps,/\{"continue":true\}/);
  assert.doesNotMatch(ps,/last-assistant-message|input-messages|\.text\b/);
+ assert.match(ps, /\$statusPayload\s*=\s*@\{/);
+ assert.match(ps, /\$body\s*=\s*\$statusPayload\s*\|\s*ConvertTo-Json/i);
+ assert.doesNotMatch(ps, /\$payload\s*=\s*@\{/i);
  for(const ev of ['beforeSubmitPrompt','afterAgentThought','afterFileEdit','stop','sessionEnd','agent-turn-complete','UserPromptSubmit','PreToolUse','PostToolUse','PermissionRequest','SubagentStart','SubagentStop','Interrupt']) assert.ok(ps.includes(ev),ev);
 });
 test('Windows PowerShell connection helpers bypass configured localhost proxies',()=>{

@@ -207,48 +207,11 @@ function Install-Cursor {
     } else { Write-Host '[OK] Cursor hooks already installed.' }
 }
 function Install-WorkBuddy {
-    $file = Join-Path $homeFolder '.workbuddy\settings.json'
-    if(Test-Path -LiteralPath $file -PathType Leaf) {
-        $data = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json
-    } else { $data = [pscustomobject]@{ hooks = [pscustomobject]@{} } }
-    if($null -eq $data -or $data -isnot [pscustomobject]) { throw 'Existing WorkBuddy settings.json is not a JSON object.' }
-    if(-not ($data.PSObject.Properties.Name -contains 'hooks')) {
-        $data | Add-Member -NotePropertyName hooks -NotePropertyValue ([pscustomobject]@{})
-    }
-    if($data.hooks -isnot [pscustomobject]) { throw 'Existing WorkBuddy hooks must be an object; unchanged.' }
-    $events = @('SessionStart','UserPromptSubmit','PreToolUse','PostToolUse','PermissionRequest','Notification','Stop','SessionEnd')
-    # Inspect all targeted groups BEFORE writing the config; unsupported shapes abort safely.
-    foreach($eventName in $events) {
-        $property = $data.hooks.PSObject.Properties[$eventName]
-        if($null -ne $property -and $null -ne $property.Value) {
-            if($property.Value -isnot [array]) { throw "WorkBuddy $eventName must be an array; unchanged." }
-            foreach($group in $property.Value) {
-                if($null -eq $group -or $group -isnot [pscustomobject] -or $group.hooks -isnot [array]) {
-                    throw "WorkBuddy $eventName has an unsupported hook group; unchanged."
-                }
-            }
-        }
-    }
-    $changed = $false
-    foreach($eventName in $events) {
-        $command = 'powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $handler + '" -Event workbuddy:' + $eventName
-        $property = $data.hooks.PSObject.Properties[$eventName]
-        $groups = if($null -eq $property -or $null -eq $property.Value) { @() } else { @($property.Value) }
-        $exists = $false
-        foreach($group in $groups) {
-            foreach($h in $group.hooks) { if($h.type -eq 'command' -and $h.command -eq $command) { $exists = $true } }
-        }
-        if(-not $exists) {
-            $groups = @($groups) + @([pscustomobject]@{ hooks = @([pscustomobject]@{type='command';command=$command;timeout=5}) })
-            if($null -eq $property) { $data.hooks | Add-Member -NotePropertyName $eventName -NotePropertyValue $groups }
-            else { $property.Value = $groups }
-            $changed = $true
-        }
-    }
-    if($changed) {
-        Write-Config $file ((ConvertTo-Json -InputObject $data -Depth 64) + "`r`n")
-        Write-Host "[OK] WorkBuddy Desktop hooks installed: $file"
-    } else { Write-Host '[OK] WorkBuddy Desktop hooks already installed.' }
+    $node = Get-Command node.exe -ErrorAction SilentlyContinue
+    if($null -eq $node) { throw 'WorkBuddy Windows hooks require Node.js; PowerShell hook commands are not supported by its shell runner. Install Node.js and rerun setup-agent-hooks-windows.bat.' }
+    $installer = Join-Path $repo 'scripts\setup-integrations.cjs'
+    & $node.Source $installer --workbuddy
+    if($LASTEXITCODE -ne 0) { throw 'Node.js WorkBuddy hook setup failed; settings were left unchanged if validation failed.' }
 }
 
 try { Install-Codex } catch { $failures++; Write-Host "[ERROR] Codex: $($_.Exception.Message)" -ForegroundColor Red }

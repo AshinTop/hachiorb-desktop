@@ -44,8 +44,8 @@ function workbuddyEvent(kind,input={}){
   switch(kind){
     case 'SessionStart': return {...base,state:'idle',task:'WorkBuddy 会话已启动'};
     case 'UserPromptSubmit': return {...base,state:'thinking',task:'WorkBuddy 正在思考'};
-    case 'PreToolUse':
-    case 'PostToolUse': return {...base,state:'working',task:'WorkBuddy 正在执行工具'};
+    case 'PreToolUse': return {...base,state:'working',task:'WorkBuddy 正在执行工具'};
+    case 'PostToolUse': return {...base,state:'thinking',task:'WorkBuddy 正在分析工具结果'};
     case 'PermissionRequest': return {...base,state:'idle',emotionId:'35',attention:'permission',task:'WorkBuddy 等待授权'};
     case 'Notification': {
       if(input?.notification_type==='permission_prompt')return {...base,state:'idle',emotionId:'35',attention:'permission',task:'WorkBuddy 等待权限确认'};

@@ -18,6 +18,7 @@ async function readStdin(limit=65536){
  });
 }
 async function main(kind=process.argv[2]){
+ if(typeof kind==='string'&&kind.startsWith('workbuddy:'))kind=kind.slice('workbuddy:'.length);
  if(!VALID.has(kind))return;
  try{
   const raw=await readStdin();

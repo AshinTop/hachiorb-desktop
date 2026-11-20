@@ -43,24 +43,26 @@ Hook 忽略 prompt、agent 思维和文件内容，仅使用事件类别、状�
 ## 2. WorkBuddy 桌面版自动通知（新增）
 
 现在支持 WorkBuddy Desktop 的本地 Hook。安装器将合并当前用户的
-`%USERPROFILE%\.workbuddy\settings.json` 中的 `hooks`，备份为带 `.hachiorb-backup-...` 的文件。
+`%USERPROFILE%\.workbuddy\settings.json` 中的 `hooks`，备份为带 `.hachiorb-backup-...` 的文件，并使用 Node.js Hook 适配器。WorkBuddy 在 Windows 上通过 Git Bash 运行 Hook；安装器会把 Windows 路径转换成 Bash 可识别的 `/c/...` 形式，避免反斜杠解析问题。旧版安装器写入的 PowerShell 命令可能不会执行。没有 Node.js 时，安装器会明确报出 WorkBuddy 未配置，不再把 PowerShell Hook 显示为成功。
 不会读取或转发 prompt、工具参数、转录、会话数据库、原始回复内容；只发六态工作状态和简短固定标签。
 
 | WorkBuddy Hook | HachiOrb 状态 |
 | --- | --- |
 | `SessionStart` | 待机 |
 | `UserPromptSubmit` | 思考中 |
-| `PreToolUse` / `PostToolUse` | 工作中 |
+| `PreToolUse` | 执行中 |
+| `PostToolUse` | 思考中，分析工具结果 |
 | `PermissionRequest` | **等待授权**（Grok Ball 表情 `35`，`attention=permission`） |
 | `Notification.permission_prompt` | **等待授权**（表情 `35`） |
 | `Notification.idle_prompt` | **等待回答**（表情 `35`，`attention=input`） |
 | `Stop` | 本轮结束，完成庆祝（不代表所有后台任务均结束） |
 | `SessionEnd` | 待机 |
 
-先运行 HachiOrb，再双击 `setup-agent-hooks-windows.bat`，随后**完全退出 WorkBuddy 后重新打开**并创建实际任务。
+先运行 HachiOrb，再双击 `setup-agent-hooks-windows.bat`，随后**完全退出 WorkBuddy 后重新打开**并创建实际任务。重复运行会移除 HachiOrb 自己的旧 PowerShell Hook、保留其他 Hook，并改装成 Node.js Hook。
 WorkBuddy 桌面端 Hook 行为来自社区实测，官方 CodeBuddy Code 文档的全部事件并不保证在所有 WorkBuddy Desktop 版本都生效。
 检测失败时请检查 WorkBuddy 版本、是否打开了工作区，以及该用户的 settings.json 是否加载。
 原有其他 Hook 不会被删除。安装器不请求 WorkBuddy 账号、令牌或云端接口权限。
+状态目前按 AI 工具汇总：不同工具分别记录，同一 WorkBuddy 内的多个对话共用最近一次状态，尚未拆分成独立会话显示。
 
 实测参考：https://cloud.tencent.cn/developer/article/2713175
 

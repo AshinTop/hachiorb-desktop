@@ -28,7 +28,7 @@ test('PowerShell fallback and Node adapter both tag WorkBuddy permission / answe
  const node=read('integrations/agent-events.cjs');
  assert.match(ps,/\$attention='permission'/);
  assert.match(ps,/\$attention='input'/);
- assert.match(ps,/\$payload\.attention=\$attention/);
+ assert.match(ps,/\$statusPayload\.attention=\$attention/);
  assert.match(node,/attention:'permission'/);
  assert.match(node,/attention:'input'/);
 });

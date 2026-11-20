@@ -15,6 +15,16 @@ function quoteCommandArg(value){
  if(text.includes('"'))throw Error('Codex hook command path contains an unsupported quote');
  return `"${text}"`;
 }
+function gitBashPath(value){
+ const text=String(value).replace(/\\/g,'/');
+ const drive=/^([A-Za-z]):\/(.*)$/.exec(text);
+ if(drive)return `/${drive[1].toLowerCase()}/${drive[2]}`;
+ if(text.startsWith('/'))return text;
+ throw Error('WorkBuddy hook paths must be absolute Windows drive paths or POSIX paths');
+}
+function quoteBashArg(value){
+ return "'"+String(value).replace(/'/g,"'\"'\"'")+"'";
+}
 function configDisablesHooks(file){
  if(!fs.existsSync(file))return false;
  let section='';
@@ -122,7 +132,7 @@ function setupCursor({home=os.homedir(),root=path.resolve(__dirname,'..'),stable
 }
 const WORKBUDDY_EVENTS=Object.freeze(['SessionStart','UserPromptSubmit','PreToolUse','PostToolUse','PermissionRequest','Notification','Stop','SessionEnd']);
 /** Desktop WorkBuddy (not CodeBuddy CLI): safely extend ~/.workbuddy/settings.json. */
-function setupWorkBuddy({home=os.homedir(),root=path.resolve(__dirname,'..'),stableDir=BASE_DIR}={}){
+function setupWorkBuddy({home=os.homedir(),root=path.resolve(__dirname,'..'),stableDir=BASE_DIR,nodeExe=process.execPath}={}){
  const file=path.join(home,'.workbuddy','settings.json');
  let data={hooks:{}};
  if(fs.existsSync(file)){
@@ -130,24 +140,44 @@ function setupWorkBuddy({home=os.homedir(),root=path.resolve(__dirname,'..'),sta
   catch(e){throw Error('WorkBuddy settings.json is invalid JSON; unchanged: '+e.message)}
  }
  if(!data || typeof data!=='object'||Array.isArray(data))throw Error('WorkBuddy settings.json must be a JSON object; unchanged');
+ if(data.disableAllHooks===true)throw Error('WorkBuddy disables all hooks in settings.json; unchanged. Re-enable Hooks in WorkBuddy and rerun setup.');
  if(data.hooks!=null && (typeof data.hooks!=='object'||Array.isArray(data.hooks)))throw Error('WorkBuddy hooks must be an object; unchanged');
  if(!data.hooks)data.hooks={};
- const handler=path.join(stableDir,'agent-status.ps1');
+ stage(root,stableDir);
+ const handler=path.join(stableDir,'workbuddy-hook.cjs');
+ const timeout=15;
  let changed=false;
  for(const event of WORKBUDDY_EVENTS){
   const entries=data.hooks[event];
   if(entries!=null&&!Array.isArray(entries))throw Error('WorkBuddy '+event+' hooks must be an array; unchanged');
-  const command=`powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${handler}" -Event workbuddy:${event}`;
+  // WorkBuddy runs hook commands through Git Bash on Windows. POSIX paths
+  // avoid the backslash parsing bug in older CodeBuddy-derived runners.
+  const command=`${quoteBashArg(gitBashPath(nodeExe))} ${quoteBashArg(gitBashPath(handler))} workbuddy:${event}`;
   const groups=entries||[];
+  const nextGroups=[];let found=false;
   for(const group of groups){
    if(!group||typeof group!=='object'||Array.isArray(group)||!Array.isArray(group.hooks))
     throw Error('WorkBuddy '+event+' contains an unsupported hook group; unchanged');
+   const nextHooks=[];
+   for(const hook of group.hooks){
+    const cmd=typeof hook?.command==='string'?hook.command:'';
+    const ours=hook?.type==='command'&&(
+     (/hachiorb[^\r\n]*agent-status\.ps1/i.test(cmd)&&new RegExp('-Event\\s+workbuddy:'+event+'(?:\\s|$)','i').test(cmd))||
+     (/(?:^|[\\/'])workbuddy-hook\.cjs(?:['"\\s]|$)/i.test(cmd)&&new RegExp('(?:workbuddy:)?'+event+'(?:\\s|$)','i').test(cmd))
+    );
+    if(!ours){nextHooks.push(hook);continue;}
+    const correct=cmd===command&&hook.timeout===timeout&&!Object.keys(hook).some(k=>!['type','command','timeout'].includes(k));
+    if(correct&&!found){nextHooks.push(hook);found=true;}
+    else changed=true;
+   }
+   if(nextHooks.length||group.hooks.length===0)nextGroups.push({...group,hooks:nextHooks});
+   else changed=true;
   }
-  if(!groups.some(group=>group.hooks.some(hook=>hook&&hook.type==='command'&&hook.command===command))){
-   data.hooks[event]=[...groups,{hooks:[{type:'command',command,timeout:5}]}];changed=true;
+  if(!found){
+   nextGroups.push({matcher:'',hooks:[{type:'command',command,timeout}]});changed=true;
   }
+  if(changed||JSON.stringify(groups)!==JSON.stringify(nextGroups))data.hooks[event]=nextGroups;
  }
- stage(root,stableDir);
  if(!changed)return {status:'already-installed',file};
  fs.mkdirSync(path.dirname(file),{recursive:true});
  if(fs.existsSync(file))fs.copyFileSync(file,file+'.hachiorb-backup-'+Date.now());

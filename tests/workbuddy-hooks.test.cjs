@@ -14,7 +14,7 @@ function filename(ctx){return path.join(ctx.home,'.workbuddy','settings.json')}
 function clean(ctx){fs.rmSync(ctx.dir,{recursive:true,force:true})}
 test('WorkBuddy hooks map key lifecycle and never forward prompt content',()=>{
  const sensitive={prompt:'PRIVATE MESSAGE',tool_input:{password:'PRIVATE KEY'},last_assistant_message:'SECRET',session_id:'abc123'};
- const expected={SessionStart:'idle',UserPromptSubmit:'thinking',PreToolUse:'working',PostToolUse:'working',PermissionRequest:'idle',Stop:'done',SessionEnd:'idle'};
+ const expected={SessionStart:'idle',UserPromptSubmit:'thinking',PreToolUse:'working',PostToolUse:'thinking',PermissionRequest:'idle',Stop:'done',SessionEnd:'idle'};
  for(const [event,state] of Object.entries(expected)){
   const mapped=workbuddyEvent(event,sensitive); assert.equal(mapped.state,state); assert.equal(mapped.agent,'workbuddy');
   assert.ok(!JSON.stringify(mapped).includes('PRIVATE'));assert.ok(!JSON.stringify(mapped).includes('SECRET'));
@@ -26,6 +26,7 @@ test('WorkBuddy hooks map key lifecycle and never forward prompt content',()=>{
  assert.equal(workbuddyEvent('Notification',{notification_type:'idle_prompt'}).attention,'input');
  assert.equal(workbuddyEvent('Notification',{notification_type:'other',prompt:'SECRET'}),null);
  assert.equal(workbuddyEvent('RandomEvent',sensitive),null);
+ assert.match(fs.readFileSync(path.join(root,'integrations/agent-status.ps1'),'utf8'),/'PostToolUse' \{ \$state='thinking'/);
 });
 test('Installer safely merges other WorkBuddy hooks, backs up, and reruns idempotently',()=>{
  const ctx=temp(),file=filename(ctx);fs.mkdirSync(path.dirname(file),{recursive:true});
@@ -57,9 +58,10 @@ test('WorkBuddy handler emits valid JSON and does not echo private messages whil
 });
 test('Windows fallback stages WorkBuddy and avoids private payload or cloud services',()=>{
  const ps=fs.readFileSync(path.join(root,'scripts/setup-agent-hooks.ps1'),'utf8');
+ const installer=fs.readFileSync(path.join(root,'scripts/setup-integrations.cjs'),'utf8');
  const handler=fs.readFileSync(path.join(root,'integrations/agent-status.ps1'),'utf8');
  const bat=fs.readFileSync(path.join(root,'setup-agent-hooks-windows.bat'),'utf8');
- assert.match(ps,/Install-WorkBuddy/);assert.ok(ps.includes(".workbuddy\\settings.json"));
- assert.match(handler,/workbuddy:/);assert.match(handler,/PermissionRequest/);assert.match(handler,/\$payload\.attention=\$attention/);assert.match(handler,/127\.0\.0\.1/);
+ assert.match(ps,/Install-WorkBuddy/);assert.match(ps,/setup-integrations\.cjs/);assert.match(ps,/--workbuddy/);assert.ok(installer.includes("path.join(home,'.workbuddy','settings.json')"));
+ assert.match(handler,/workbuddy:/);assert.match(handler,/PermissionRequest/);assert.match(handler,/\$statusPayload\.attention=\$attention/);assert.match(handler,/127\.0\.0\.1/);
  assert.match(bat,/WorkBuddy/);
 });

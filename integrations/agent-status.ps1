@@ -43,7 +43,7 @@ try {
             'SessionStart' { $state='idle'; $task='WorkBuddy session started'; break }
             'UserPromptSubmit' { $state='thinking'; $task='WorkBuddy thinking'; break }
             'PreToolUse' { $state='working'; $task='WorkBuddy using a tool'; break }
-            'PostToolUse' { $state='working'; $task='WorkBuddy using a tool'; break }
+            'PostToolUse' { $state='thinking'; $task='WorkBuddy reviewing tool results'; break }
             'PermissionRequest' { $state='idle'; $emotionId='35'; $attention='permission'; $task='WorkBuddy awaiting permission'; break }
             'Notification' {
                 if($info.notification_type -eq 'permission_prompt') {
@@ -73,10 +73,12 @@ try {
         }
     }
     if(-not $state) { return }
-    $payload = @{ agent=$agent; state=$state; task=$task }
-    if($emotionId) { $payload.emotionId=$emotionId }
-    if($attention) { $payload.attention=$attention }
-    $body = $payload | ConvertTo-Json -Compress
+    # PowerShell variable names are case-insensitive. Keep this separate from
+    # the -Payload string parameter used by the legacy Codex notify adapter.
+    $statusPayload = @{ agent=$agent; state=$state; task=$task }
+    if($emotionId) { $statusPayload.emotionId=$emotionId }
+    if($attention) { $statusPayload.attention=$attention }
+    $body = $statusPayload | ConvertTo-Json -Compress
     $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($body)
     foreach($port in @(4173,4174,4175)) {
         $request = $null

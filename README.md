@@ -64,7 +64,7 @@ Windows PowerShell 在该文件夹中执行（应用运行期间）：
 
 ## Codex、Cursor、Grok Bot 一键/手动接入
 
-Windows 启动 HachiOrb 后，可先双击 `test-agent-connection-windows.bat` 检查本地接口，再双击 `setup-agent-hooks-windows.bat` 安装当前用户的 Codex、Cursor 和 WorkBuddy 状态 Hook。**新版安装器优先使用 Node.js，未安装 Node.js 时使用 Windows 自带 PowerShell 兜底**。已有第三方 Codex notify 不会覆盖；Cursor 其他 Hook 保留并备份。WorkBuddy 使用 `%USERPROFILE%\.workbuddy\settings.json` 的本地 Hook（需要重启 WorkBuddy）；Grok Bot 的当前自动化边界和可选 CLI 包装详见 [INTEGRATIONS.md](INTEGRATIONS.md)。
+Windows 启动 HachiOrb 后，可先双击 `test-agent-connection-windows.bat` 检查本地接口，再双击 `setup-agent-hooks-windows.bat` 安装当前用户的 Codex、Cursor 和 WorkBuddy 状态 Hook。**新版安装器优先使用 Node.js，未安装 Node.js 时 PowerShell 兜底可配置 Codex/Cursor；WorkBuddy Hook 需要 Node.js 运行时**。已有第三方 Codex notify 不会覆盖；Cursor 其他 Hook 保留并备份。WorkBuddy 使用 `%USERPROFILE%\.workbuddy\settings.json` 的本地 Hook（需要重启 WorkBuddy）；Grok Bot 的当前自动化边界和可选 CLI 包装详见 [INTEGRATIONS.md](INTEGRATIONS.md)。
 
 ## 开发和测试
 
