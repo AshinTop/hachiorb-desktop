@@ -52,7 +52,7 @@ test('Installer refuses malformed WorkBuddy config without modifying it',()=>{
 });
 test('WorkBuddy handler emits valid JSON and does not echo private messages while HachiOrb is offline',()=>{
  const hook=path.join(root,'integrations','workbuddy-hook.cjs');
- const run=spawnSync(process.execPath,[hook,'UserPromptSubmit'],{input:JSON.stringify({prompt:'SECRET TOKEN',session_id:'abc'}),encoding:'utf8',timeout:8000});
+ const run=spawnSync(process.execPath,[hook,'UserPromptSubmit'],{input:JSON.stringify({prompt:'SECRET TOKEN',session_id:'abc'}),encoding:'utf8',timeout:8000,env:{...process.env,HACHI_STATUS_PORTS:''}});
  assert.equal(run.status,0);assert.equal(run.stdout.trim(),'{}');assert.doesNotMatch(run.stderr,/SECRET|TOKEN/);
 });
 test('Windows fallback stages WorkBuddy and avoids private payload or cloud services',()=>{

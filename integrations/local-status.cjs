@@ -1,7 +1,14 @@
 'use strict';
 /** Fast best-effort localhost status sender. No remote requests, API keys or dependencies. */
 const http=require('node:http');
-const PORTS=[4173,4174,4175];
+const DEFAULT_PORTS=Object.freeze([4173,4174,4175]);
+function configuredPorts(value=process.env.HACHI_STATUS_PORTS){
+ if(value===undefined)return [...DEFAULT_PORTS];
+ if(!value.trim())return [];
+ const ports=value.split(',').map(port=>Number(port.trim()));
+ return ports.length&&ports.every(port=>Number.isInteger(port)&&port>=1&&port<=65535)?ports:[...DEFAULT_PORTS];
+}
+const PORTS=configuredPorts();
 function postPort(port,payload,timeout=400){
  return new Promise((resolve,reject)=>{
   const body=Buffer.from(JSON.stringify(payload));
@@ -19,4 +26,4 @@ async function send(payload,{ports=PORTS,timeout=400}={}){
  for(const port of ports){try{await postPort(port,payload,timeout);return true;}catch{/* local app may be offline or using another port */}}
  return false;
 }
-module.exports={send,PORTS};
+module.exports={send,PORTS,configuredPorts};

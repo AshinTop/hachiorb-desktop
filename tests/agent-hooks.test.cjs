@@ -5,10 +5,10 @@ const {spawn}=require('node:child_process');
 const path=require('node:path');
 const {codexEvent,cursorEvent}=require('../integrations/agent-events.cjs');
 const {createBridge}=require('../src/bridge.cjs');
-const {send}=require('../integrations/local-status.cjs');
-function run(file,args=[],input=''){
+const {send,configuredPorts}=require('../integrations/local-status.cjs');
+function run(file,args=[],input='',env=process.env){
  return new Promise((resolve,reject)=>{
-  const p=spawn(process.execPath,[path.join(__dirname,'..',file),...args],{stdio:['pipe','pipe','pipe']});
+  const p=spawn(process.execPath,[path.join(__dirname,'..',file),...args],{stdio:['pipe','pipe','pipe'],env});
   let stdout='',stderr='';p.stdout.on('data',v=>stdout+=v);p.stderr.on('data',v=>stderr+=v);
   p.on('error',reject);p.on('close',(code)=>resolve({code,stdout,stderr}));p.stdin.end(input);
  });
@@ -17,6 +17,10 @@ test('codex official notify event maps only turn-complete without full prompt',(
  const s=codexEvent({type:'agent-turn-complete',cwd:'C:\\work\\repo', 'input-messages':['secret prompt']});
  assert.equal(s.agent,'codex');assert.equal(s.state,'done');assert.ok(!s.task.includes('secret'));
  assert.equal(codexEvent({type:'unsupported'}),null);
+});
+test('test subprocesses can disable all local status delivery',()=>{
+ assert.deepEqual(configuredPorts(''),[]);
+ assert.deepEqual(configuredPorts('4174, 4175'),[4174,4175]);
 });
 test('Cursor event classification respects aborted/error/completed',()=>{
  assert.equal(cursorEvent('beforeSubmitPrompt',{}).state,'thinking');
@@ -43,7 +47,7 @@ test('Loopback sender finds ephemeral bridge and does not transmit secrets',asyn
  }
 });
 test('Cursor hook returns valid JSON response even when local desktop is offline',async()=>{
- const result=await run('integrations/cursor-hook.cjs',['beforeSubmitPrompt'],JSON.stringify({prompt:'classified private info'}));
+ const result=await run('integrations/cursor-hook.cjs',['beforeSubmitPrompt'],JSON.stringify({prompt:'classified private info'}),{...process.env,HACHI_STATUS_PORTS:''});
  assert.equal(result.code,0);assert.deepEqual(JSON.parse(result.stdout),{continue:true});
  assert.ok(!result.stdout.includes('classified'));
 });
