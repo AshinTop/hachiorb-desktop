@@ -3,6 +3,7 @@ const {app,BrowserWindow,Tray,Menu,nativeImage,ipcMain,screen,clipboard,dialog} 
 const path=require('node:path');
 const fs=require('node:fs');
 const {createBridge,EMOTION_STATE}=require('./bridge.cjs');
+const {agentName,stateName}=require('./status-display.js');
 const {verified}=require('../scripts/bootstrap.cjs');
 const {clampPosition,dragPosition,fixedBounds}=require('./drag-geometry.cjs');
 const ROOT=path.resolve(__dirname,'..');
@@ -14,9 +15,9 @@ const EMO_GROUPS={
  '情绪':[['10','开心'],['11','疑惑'],['12','失落'],['13','惊讶'],['14','害羞'],['15','疲惫'],['16','专注'],['17','慌张'],['18','无奈'],['19','满意'],['20','困惑'],['21','生气']],
  '待机与休眠':[['00','睡眠'],['01','唤醒'],['02','待机'],['03','好奇'],['04','发呆'],['05','加载苏醒'],['06','休眠'],['07','抖动唤醒']]
 };
-const DEFAULTS={size:260,x:null,y:null,alwaysOnTop:true,followCursor:true,locked:false,autostart:false};
+const DEFAULTS={size:260,x:null,y:null,alwaysOnTop:true,followCursor:true,showStatus:true,locked:false,autostart:false};
 let settings,windowPet=null,tray=null,api=null,bridge=null,dragSession=null,lastPointerIgnore=false;
-let cursorTimer=null,savePath='';
+let cursorTimer=null,statusTimer=null,savePath='';
 function saveSettings(){try{fs.writeFileSync(savePath,JSON.stringify(settings,null,2))}catch(e){console.warn('Settings not saved',e.message)}}
 function loadSettings(){
  try{const data=JSON.parse(fs.readFileSync(savePath,'utf8'));return {...DEFAULTS,
@@ -24,6 +25,7 @@ function loadSettings(){
   x:Number.isInteger(data.x)?data.x:null,y:Number.isInteger(data.y)?data.y:null,
   alwaysOnTop:typeof data.alwaysOnTop==='boolean'?data.alwaysOnTop:true,
   followCursor:typeof data.followCursor==='boolean'?data.followCursor:true,
+  showStatus:typeof data.showStatus==='boolean'?data.showStatus:true,
   locked:typeof data.locked==='boolean'?data.locked:false,
   autostart:typeof data.autostart==='boolean'?data.autostart:false
  }}catch{return {...DEFAULTS}}
@@ -54,13 +56,22 @@ function changeSize(size){
  windowPet.setBounds({x:pos.x,y:pos.y,width:size,height:size},false);applySettings();
 }
 function makeMenu(){
+ const snapshot=bridge?.getState();
+ const lastEvents=snapshot?.agents||[];
+ const agentKeys=['codex','cursor','workbuddy','grok-bot',...lastEvents.map(s=>s.agent).filter(s=>!['codex','cursor','workbuddy','grok-bot'].includes(s))];
+ const agentMenu=[...new Set(agentKeys)].map(id=>{
+  const item=lastEvents.find(s=>s.agent===id);
+  return {label:`${agentName(id)} · ${item?stateName(item)+(item.stale?'（上次报告）':''):'尚无事件'}`,enabled:false};
+ });
  const items=[
-  {label:'HachiOrb · '+LABELS[bridge?.getState().state||'idle'],enabled:false},
+  {label:`HachiOrb · ${agentName(snapshot?.agent)} · ${stateName(snapshot)}`,enabled:false},
+  {label:'四个 Agent 最近状态',submenu:agentMenu},
   {type:'separator'},
   {label:'显示 / 隐藏',click:()=>windowPet.isVisible()?windowPet.hide():windowPet.show()},
   {label:'始终置顶',type:'checkbox',checked:settings.alwaysOnTop,click:i=>{settings.alwaysOnTop=i.checked;applySettings()}},
   {label:'锁定球体（鼠标穿透）',type:'checkbox',checked:settings.locked,click:i=>{settings.locked=i.checked;applySettings()}},
   {label:'眼睛跟随全桌面鼠标',type:'checkbox',checked:settings.followCursor,click:i=>{settings.followCursor=i.checked;applySettings()}},
+  {label:'显示 Agent 名称与状态',type:'checkbox',checked:settings.showStatus,click:i=>{settings.showStatus=i.checked;applySettings()}},
   {type:'separator'},
   {label:'快速切换',submenu:Object.keys(LABELS).map(s=>({label:LABELS[s],click:()=>changeState(s)}))},
   {label:'32 种原版表情',submenu:Object.entries(EMO_GROUPS).map(([label,entries])=>({label,submenu:entries.map(([id,name])=>({label:`${id}  ${name}`,click:()=>changeEmotion(id)}))}))},
@@ -79,7 +90,7 @@ function makeMenu(){
  ];
  return Menu.buildFromTemplate(items);
 }
-function refreshTray(){if(tray&&!tray.isDestroyed()){tray.setContextMenu(makeMenu());tray.setToolTip('HachiOrb · Grok Ball 桌面宠物')}}
+function refreshTray(){if(tray&&!tray.isDestroyed()){const status=bridge?.getState();tray.setContextMenu(makeMenu());tray.setToolTip(`HachiOrb · ${agentName(status?.agent)} · ${stateName(status)}`)}}
 function showContextMenu(){if(windowPet&&!windowPet.isDestroyed())makeMenu().popup({window:windowPet})}
 function setupIPC(){
  ipcMain.handle('hachi:ready',()=>({state:bridge.getState(),settings:{...settings},apiPort:api}));
@@ -149,6 +160,8 @@ async function setupApp(){
  tray.on('click',()=>{if(windowPet.isVisible())windowPet.hide();else windowPet.showInactive()});
  tray.on('double-click',()=>windowPet.showInactive());
  refreshTray();
+ // Return from expired completion/attention states to the next still-active Agent.
+ statusTimer=setInterval(()=>bridge?.refresh(),2000);
  cursorTimer=setInterval(()=>{
   if(!windowPet||windowPet.isDestroyed()||!windowPet.isVisible()||!settings.followCursor)return;
   const p=screen.getCursorScreenPoint(),b=windowPet.getBounds();
@@ -160,7 +173,7 @@ async function setupApp(){
 if(!app.requestSingleInstanceLock())app.quit();
 else{
  app.on('second-instance',()=>windowPet?.showInactive());
- app.on('before-quit',()=>{app.isQuitting=true;clearInterval(cursorTimer)});
+ app.on('before-quit',()=>{app.isQuitting=true;clearInterval(cursorTimer);clearInterval(statusTimer)});
  app.on('window-all-closed',()=>{/* Stay in tray until explicitly quit */});
  app.whenReady().then(()=>{app.setAppUserModelId('org.hachiorb.desktop');return setupApp()}).catch(e=>{dialog.showErrorBox('HachiOrb 无法启动',e.message);app.quit()});
  app.on('activate',()=>windowPet?.showInactive());

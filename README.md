@@ -1,11 +1,12 @@
-# HachiOrb Desktop v1.2.0（Windows 桌面 Grok Ball）
+# HachiOrb Desktop v1.3.0（Windows 桌面 Grok Ball）
 
 这是从 HachiWatch 项目分离出的 **Windows 桌面悬浮宠物**。不需要手表、手机、DevEco、华为账号或应用市场发布。
 
 - **真正采用 TyCoding/grok-ball 的原版 SVG / JS 引擎**，不是临摹表情，也不是循环四张 PNG。
 - 无边框、透明背景、球体始终可见。桌面任意角落拖动；短点球体旋转；全桌面鼠标注视。
-- 系统托盘右键菜单：32 种表情、6 种 Agent 状态、球体尺寸、置顶、锁定鼠标穿透、隐藏/退出、打包后开机启动。
-- 本机状态接口：接入 Codex / Claude Code / WorkBuddy / 其他 Hook，使用 `http://127.0.0.1:4173/api/state`。若端口被占用会选择 4174 或 4175，在托盘里可以查看、复制实际端口。
+- 系统托盘右键菜单：32 种表情、**Codex / Cursor / WorkBuddy / Grok Bot 最近状态**、球体尺寸、置顶、锁定鼠标穿透、隐藏/退出、打包后开机启动。
+- 桌宠底部默认显示 **当前 Agent · 状态**（不显示完整提示词和代码）；托盘中可关闭这行文字，保持纯净无边框球体。
+- 本机状态接口：接入 Codex / Cursor / WorkBuddy / Grok Bot（主动事件）/ 其他 Hook，使用 `http://127.0.0.1:4173/api/state`。若端口被占用会选择 4174 或 4175，在托盘里可以查看、复制实际端口。
 - 首次联网下载并校验上游源码，之后可以离线运行。
 
 ## 最简单的启动方法
@@ -63,7 +64,7 @@ Windows PowerShell 在该文件夹中执行（应用运行期间）：
 
 ## Codex、Cursor、Grok Bot 一键/手动接入
 
-Windows 启动 HachiOrb 后，可先双击 `test-agent-connection-windows.bat` 检查本地接口，再双击 `setup-agent-hooks-windows.bat` 安装当前用户的 Codex、Cursor 和 WorkBuddy 状态 Hook。**新版安装器使用 Windows 自带 PowerShell，不要求另外安装 Node.js**。已有第三方 Codex notify 不会覆盖；Cursor 其他 Hook 保留并备份。WorkBuddy 使用 `%USERPROFILE%\.workbuddy\settings.json` 的本地 Hook（需要重启 WorkBuddy）；Grok Bot 的当前自动化边界和可选 CLI 包装详见 [INTEGRATIONS.md](INTEGRATIONS.md)。
+Windows 启动 HachiOrb 后，可先双击 `test-agent-connection-windows.bat` 检查本地接口，再双击 `setup-agent-hooks-windows.bat` 安装当前用户的 Codex、Cursor 和 WorkBuddy 状态 Hook。**新版安装器优先使用 Node.js，未安装 Node.js 时使用 Windows 自带 PowerShell 兜底**。已有第三方 Codex notify 不会覆盖；Cursor 其他 Hook 保留并备份。WorkBuddy 使用 `%USERPROFILE%\.workbuddy\settings.json` 的本地 Hook（需要重启 WorkBuddy）；Grok Bot 的当前自动化边界和可选 CLI 包装详见 [INTEGRATIONS.md](INTEGRATIONS.md)。
 
 ## 开发和测试
 
@@ -94,9 +95,9 @@ Electron 作为运行容器，采用 `nodeIntegration:false`、`contextIsolation
 
 从 [GitHub Releases](https://github.com/AshinTop/hachiorb-desktop/releases) 下载 `HachiOrb-Windows-Portable.zip`，完整解压后运行 `HachiOrb.exe`。这不是单文件 EXE，必须保留解压目录里的依赖文件。仓库目前为 Private，只能由有权限的 GitHub 账号下载。当前构建无 Windows 代码签名，SmartScreen 可能显示未知发布者。
 
-**发布新版本：** 仓库 Actions → **Publish HachiOrb Windows Release** → **Run workflow** → 输入 `v1.2.0`。工作流只允许手动触发，打包结果直接发布到 GitHub Releases，不再使用 Actions Artifact 存储。工作流本身仍消耗 Actions 运行额度；如果在仓库设置中完全禁用 Actions，需改用本地 `build-windows.bat` 构建后手动上传 ZIP。
+**发布新版本：** 仓库 Actions → **Publish HachiOrb Windows Release** → **Run workflow** → 输入 `v1.3.0`。工作流只允许手动触发，打包结果直接发布到 GitHub Releases，不再使用 Actions Artifact 存储。工作流本身仍消耗 Actions 运行额度；如果在仓库设置中完全禁用 Actions，需改用本地 `build-windows.bat` 构建后手动上传 ZIP。
 
-> 当前尚未创建或验收 `v1.2.0` 安装包。Windows 真机验收通过前，自动发布工作流会把 Release 标为预发布版（Pre-release）。
+> 当前尚未创建或验收 `v1.3.0` 安装包。Windows 真机验收通过前，自动发布工作流会把 Release 标为预发布版（Pre-release）。
 
 ## v1.2.0 修复：拖动放大、复合通知器与 WorkBuddy Hook
 
@@ -117,3 +118,14 @@ Electron 作为运行容器，采用 `nodeIntegration:false`、`contextIsolation
 ### WorkBuddy 桌面版
 
 新版安装器支持 `%USERPROFILE%\.workbuddy\settings.json` 的本地 Hook：`SessionStart`、`UserPromptSubmit`、`PreToolUse`、`PostToolUse`、`PermissionRequest`、`Notification`、`Stop`、`SessionEnd`。会先备份并保留原有 Hook；重复安装不会重复追加同一指令。必须完全退出 WorkBuddy 再重启，使用真实项目任务测试。仅发送状态类型、固定短标签，不读取或上传 prompt、聊天正文、工具参数或密钥。此功能基于桌面版社区实测，仍需你的 Windows 版本验证，详见 [INTEGRATIONS.md](INTEGRATIONS.md)。
+
+## v1.3.0：多 Agent 状态与 WorkBuddy 等待提醒
+
+- **统一监听四种 Agent 的已上报事件**：每种 Agent 分别维护最后一条状态，`GET /api/state` 新增 `agents`（最近状态数组）及当前聚焦的 `agent`、`state`、`attention`。这些是 Hook/CLI 的**事件记录**，并不证明进程当前在线。
+- **智能选取桌宠当前展示**：等待授权/回答优先于普通工作中；工作中的 Agent 优先于其他 Agent 的待机或本轮完成。工作状态超过 20 分钟无新事件不再继续宣称工作中；等待提醒 10 分钟后过期；完成/错误状态 20 秒后过期；手动切换表情展示约 8 秒。进入托盘“**四个 Agent 最近状态**”可以查看每个通道最后一次上报状态。
+- **WorkBuddy 重要状态**：`PermissionRequest` 和 `Notification.permission_prompt` 显示「WorkBuddy · 等待授权」；`Notification.idle_prompt` 显示「WorkBuddy · 等待回答」，使用 Grok Ball `35` 号等待表情。不读取任务正文或敏感数据；**不会代替用户自动批准任何权限**。
+- **轻量常驻标签**：小球下方显示当前 Agent 名称和状态，右键托盘可关闭。没有在球周围增加装饰框；高频重复状态不会重新启动相同表情的动画。
+- **Codex 限制**：官方 `notify` 目前只有本轮结束事件，不会据此虚构思考/编辑中的实时状态。**Grok Bot 限制**：现阶段只有显式上报或 CLI 包装器，不包含任意桌面 Grok Bot 的被动监控。
+- **多会话限制**：当前按 Agent 产品维度保存最后一次状态，不识别同一个 Agent 的多个并发会话；后续如 Hook 提供稳定的会话标识才考虑会话级跟踪。
+
+**升级后操作**：更新 GitHub 源码或下载新发布包，重新启动 HachiOrb。已装好 Hook 通常不用重装；如果 WorkBuddy/Cursor 状态未更新，再运行 `setup-agent-hooks-windows.bat` 并重启 WorkBuddy。Windows GUI/具体 WorkBuddy 版本仍需你本机验收；自动测试只证明事件解析和状态选择逻辑。

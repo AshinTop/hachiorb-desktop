@@ -20,7 +20,10 @@ test('WorkBuddy hooks map key lifecycle and never forward prompt content',()=>{
   assert.ok(!JSON.stringify(mapped).includes('PRIVATE'));assert.ok(!JSON.stringify(mapped).includes('SECRET'));
  }
  assert.equal(workbuddyEvent('PermissionRequest',sensitive).emotionId,'35');
+ assert.equal(workbuddyEvent('PermissionRequest',sensitive).attention,'permission');
+ assert.equal(workbuddyEvent('Notification',{notification_type:'permission_prompt'}).attention,'permission');
  assert.equal(workbuddyEvent('Notification',{notification_type:'idle_prompt'}).emotionId,'35');
+ assert.equal(workbuddyEvent('Notification',{notification_type:'idle_prompt'}).attention,'input');
  assert.equal(workbuddyEvent('Notification',{notification_type:'other',prompt:'SECRET'}),null);
  assert.equal(workbuddyEvent('RandomEvent',sensitive),null);
 });
@@ -57,6 +60,6 @@ test('Windows fallback stages WorkBuddy and avoids private payload or cloud serv
  const handler=fs.readFileSync(path.join(root,'integrations/agent-status.ps1'),'utf8');
  const bat=fs.readFileSync(path.join(root,'setup-agent-hooks-windows.bat'),'utf8');
  assert.match(ps,/Install-WorkBuddy/);assert.ok(ps.includes(".workbuddy\\settings.json"));
- assert.match(handler,/workbuddy:/);assert.match(handler,/PermissionRequest/);assert.match(handler,/127\.0\.0\.1/);
+ assert.match(handler,/workbuddy:/);assert.match(handler,/PermissionRequest/);assert.match(handler,/\$payload\.attention=\$attention/);assert.match(handler,/127\.0\.0\.1/);
  assert.match(bat,/WorkBuddy/);
 });

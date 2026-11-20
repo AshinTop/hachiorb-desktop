@@ -1,5 +1,7 @@
 'use strict';
 const http = require('node:http');
+const {createAgentPresence} = require('./agent-presence.cjs');
+const {version}=require('../package.json');
 const STATES = Object.freeze(['idle','thinking','working','done','error','sleep']);
 const EMOTIONS = new Set([
  '00','01','02','03','04','05','06','07',
@@ -21,25 +23,40 @@ function validate(input) {
  const emotionId = input.emotionId ?? DEFAULT_EMOTION[input.state];
  if(typeof emotionId!=='string'||!EMOTIONS.has(emotionId)) throw Error('Unsupported Grok Ball emotionId');
  if(input.progress != null && (!Number.isFinite(input.progress)||input.progress<0||input.progress>100)) throw Error('Invalid progress');
+ if(input.attention != null && !['permission','input'].includes(input.attention))throw Error('Invalid attention');
+ if(input.attention != null && input.state!=='idle')throw Error('Attention requires idle state');
  return {
   state:input.state,emotionId,
   task:(typeof input.task==='string'?input.task.trim().slice(0,100):'')||'等待新任务',
-  agent:(typeof input.agent==='string'?input.agent.trim().slice(0,40):'')||'manual',
+  agent:(typeof input.agent==='string'?input.agent.trim().replace(/[\x00-\x1f\x7f]/g,' ').slice(0,40):'')||'manual',
+  attention:input.attention??null,
   progress:input.progress??null
  };
 }
 function respond(res,code,data){res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','X-Content-Type-Options':'nosniff','Cache-Control':'no-store'});res.end(JSON.stringify(data));}
-function createBridge(onChange = noop) {
- let state = {...validate({state:'idle'}), revision:0, updatedAt:new Date().toISOString()};
+function createBridge(onChange = noop,options={}) {
+ const tracker=createAgentPresence(options);
+ let state = {...validate({state:'idle'}), agents:[],revision:0,updatedAt:new Date().toISOString()};
  let server;
- function commit(input){
-  state={...validate(input),revision:state.revision+1,updatedAt:new Date().toISOString()};
-  onChange(state);return state;
+ function sync(snapshot,{emit=true}={}){
+  state={...snapshot.focus,agents:snapshot.agents,revision:state.revision+(emit?1:0),updatedAt:new Date().toISOString()};
+  if(emit)onChange(state);
+  return state;
+ }
+ function commit(input){return sync(tracker.record(validate(input)));}
+ function refresh(){
+  const next=tracker.snapshot();
+  const unchanged=state.agent===next.focus.agent && state.state===next.focus.state &&
+   state.attention===next.focus.attention && state.emotionId===next.focus.emotionId && state.task===next.focus.task;
+  if(!unchanged)return sync(next);
+  // Keep history freshness available even when visible focus has not changed.
+  state={...state,agents:next.agents};
+  return state;
  }
  function route(req,res){
   let path;
   try{path=new URL(req.url,'http://localhost').pathname;}catch{return respond(res,400,{error:'Bad URL'});}
-  if(req.method==='GET' && path==='/api/health')return respond(res,200,{ok:true,app:'HachiOrb',version:'1.0.0'});
+  if(req.method==='GET' && path==='/api/health')return respond(res,200,{ok:true,app:'HachiOrb',version});
   if(req.method==='GET' && path==='/api/state')return respond(res,200,state);
   if(req.method==='POST' && path==='/api/state'){
    // Blocks untrusted browser origins; CLI clients (no Origin) are allowed on loopback only.
@@ -75,6 +92,6 @@ function createBridge(onChange = noop) {
   throw Error('No available localhost status port (4173/4174/4175)');
  }
  async function close(){if(!server)return;const s=server;server=null;await new Promise(resolve=>s.close(resolve));}
- return {listen,close,commit,getState:()=>state};
+ return {listen,close,commit,refresh,getState:()=>state};
 }
 module.exports={createBridge,validate,STATES,EMOTIONS,DEFAULT_EMOTION,EMOTION_STATE};

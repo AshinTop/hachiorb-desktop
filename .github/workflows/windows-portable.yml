@@ -1,13 +1,13 @@
 name: Publish HachiOrb Windows Release
 
-# No push/PR triggers: releases are intentionally started by a repository maintainer.
+# Only manual dispatch. Do not burn Actions minutes on normal pushes.
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release tag (e.g. v1.1.0)'
+        description: 'Release tag (e.g. v1.3.0)'
         required: true
-        default: 'v1.2.0'
+        default: 'v1.3.0'
         type: string
 
 permissions:
@@ -27,7 +27,7 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           if ($env:RELEASE_VERSION -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') {
-            throw 'Version must look like v1.1.0'
+            throw 'Version must look like v1.3.0'
           }
       - name: Fetch verified original Grok Ball
         run: node scripts/bootstrap.cjs

@@ -6,5 +6,5 @@ body{display:flex;align-items:center;justify-content:center;font-family:Segoe UI
 #orb.dragging{cursor:grabbing;/* Keep the same silhouette while dragging: no larger shadow/scale. */filter:drop-shadow(0 8px 15px rgba(0,0,0,.22))}
 #orb svg{display:block;width:100%!important;height:100%!important;overflow:visible!important}
 #loading{font-size:11px;letter-spacing:.15em;text-align:center;padding-top:44%;color:#8b8f99}
-#label{position:absolute;bottom:0;left:50%;transform:translateX(-50%);max-width:85%;padding:3px 10px;background:rgba(15,17,23,.87);color:#e2e7ef;border:1px solid rgba(255,255,255,.13);border-radius:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px;pointer-events:none;opacity:0;transition:opacity .2s}
+#label{position:absolute;bottom:0;left:50%;transform:translateX(-50%);max-width:85%;padding:3px 10px;background:rgba(15,17,23,.87);color:#e2e7ef;border:0;border-radius:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px;pointer-events:none;opacity:.86;transition:opacity .2s}
 body:hover #label:not([hidden]){opacity:1}

@@ -1,4 +1,4 @@
-# HachiOrb · Codex / Cursor / WorkBuddy / Grok Bot 集成
+# HachiOrb · Codex / Cursor / WorkBuddy / Grok Bot 集成（v1.3.0）
 
 本项目只监听 `127.0.0.1`，本地状态事件由 Hook/CLI 在**你自己的电脑上**发送。
 不上传聊天记录、API Key、完整 prompt、思维过程和输出内容。状态只有：`idle`、`thinking`、`working`、`done`、`error`、`sleep`，可选任务短标签。
@@ -50,8 +50,9 @@ Hook 忽略 prompt、agent 思维和文件内容，仅使用事件类别、状�
 | `SessionStart` | 待机 |
 | `UserPromptSubmit` | 思考中 |
 | `PreToolUse` / `PostToolUse` | 工作中 |
-| `PermissionRequest` | 等待授权（Grok Ball 表情 `35`） |
-| `Notification` 的 `permission_prompt` / `idle_prompt` | 等待输入（表情 `35`） |
+| `PermissionRequest` | **等待授权**（Grok Ball 表情 `35`，`attention=permission`） |
+| `Notification.permission_prompt` | **等待授权**（表情 `35`） |
+| `Notification.idle_prompt` | **等待回答**（表情 `35`，`attention=input`） |
 | `Stop` | 本轮结束，完成庆祝（不代表所有后台任务均结束） |
 | `SessionEnd` | 待机 |
 
@@ -131,3 +132,21 @@ Windows Release 便携版已经增加外置 BAT、PowerShell 和 Node.js 安装�
 **限制：** 官方 Codex `notify` 目前只提供 `agent-turn-complete`，不是实时思考/工具调用事件。Codex GUI/IDE 是否读取当前用户的 CLI notify 还需本机验证。
 
 **源文件：** `scripts/setup-integrations.cjs`、`scripts/codex-notify-config.cjs`、`integrations/codex-notify-dispatcher.cjs`、`integrations/codex-notify-dispatcher.ps1`。
+
+## 6. 多 Agent 状态仲裁（v1.3.0）
+
+本地 `POST /api/state` 兼容原有格式。新增可选 `attention`：只接受 `permission`、`input`，且必须配合 `state: "idle"`；工作区名称和提示词不用于选择优先级。系统按 Agent 维护最近一次事件（上限 16 个 Agent 标识），**不会因为其他工具的 `idle` / `done` 事件把正在工作中的 Agent 错误切成待机**。
+
+- 最高优先级是最近 10 分钟内的等待授权/等待回答。触发权限请求时仍由 WorkBuddy 客户端决定，HachiOrb 只显示提醒。
+- 之后是手动表情预览（约 8 秒）、最近错误、思考/工作中的任务、本轮完成、待机/休息；高优先级选择过期后自动恢复到下一个有新事件的 Agent。
+- 当前标签只显示「**Agent 名称 · 状态**」，状态文字不会带 prompt / 工具输出；右键托盘可关闭标签，仍能查看各 Agent 最近状态。
+- `GET /api/state` 返回当前选中的状态及 `agents` 数组，含 `agent/state/attention/emotionId/reportedAt/stale`。`stale` 表示旧事件已过展示有效期，不代表进程断线。**同产品多会话暂时不能分别追踪**。
+- Grok Bot 仍依赖显式上报或已验证的第三方 CLI 包装器，未声称具备官方通用任务事件 Hook。
+
+例如在 Windows PowerShell 中模拟 WorkBuddy 等待用户回答：
+
+```powershell
+Invoke-RestMethod -Uri 'http://127.0.0.1:4173/api/state' -Method Post -ContentType 'application/json' -Body '{"agent":"workbuddy","state":"idle","emotionId":"35","attention":"input","task":"WorkBuddy 等待回答"}'
+```
+
+若端口被占用，以托盘显示的实际端口为准。

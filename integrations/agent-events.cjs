@@ -30,10 +30,10 @@ function workbuddyEvent(kind,input={}){
     case 'UserPromptSubmit': return {...base,state:'thinking',task:'WorkBuddy 正在思考'};
     case 'PreToolUse':
     case 'PostToolUse': return {...base,state:'working',task:'WorkBuddy 正在执行工具'};
-    case 'PermissionRequest': return {...base,state:'idle',emotionId:'35',task:'WorkBuddy 等待授权'};
+    case 'PermissionRequest': return {...base,state:'idle',emotionId:'35',attention:'permission',task:'WorkBuddy 等待授权'};
     case 'Notification': {
-      if(input?.notification_type==='permission_prompt')return {...base,state:'idle',emotionId:'35',task:'WorkBuddy 等待权限确认'};
-      if(input?.notification_type==='idle_prompt')return {...base,state:'idle',emotionId:'35',task:'WorkBuddy 等待输入'};
+      if(input?.notification_type==='permission_prompt')return {...base,state:'idle',emotionId:'35',attention:'permission',task:'WorkBuddy 等待权限确认'};
+      if(input?.notification_type==='idle_prompt')return {...base,state:'idle',emotionId:'35',attention:'input',task:'WorkBuddy 等待回答'};
       return null;
     }
     case 'Stop': return {...base,state:'done',task:'WorkBuddy 本轮任务已结束'};

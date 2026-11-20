@@ -12,6 +12,8 @@ try {
     $workbuddy = $Event.StartsWith('workbuddy:',[System.StringComparison]::OrdinalIgnoreCase)
     $agent = if($Event -eq 'codex') { 'codex' } elseif($workbuddy) { 'workbuddy' } else { 'cursor' }
     $state = $null
+    $emotionId = $null
+    $attention = $null
     $task = ''
     if($agent -eq 'codex') {
         if($info.type -ne 'agent-turn-complete') { return }
@@ -23,10 +25,12 @@ try {
             'UserPromptSubmit' { $state='thinking'; $task='WorkBuddy thinking'; break }
             'PreToolUse' { $state='working'; $task='WorkBuddy using a tool'; break }
             'PostToolUse' { $state='working'; $task='WorkBuddy using a tool'; break }
-            'PermissionRequest' { $state='idle'; $emotionId='35'; $task='WorkBuddy awaiting permission'; break }
+            'PermissionRequest' { $state='idle'; $emotionId='35'; $attention='permission'; $task='WorkBuddy awaiting permission'; break }
             'Notification' {
-                if($info.notification_type -eq 'permission_prompt' -or $info.notification_type -eq 'idle_prompt') {
-                    $state='idle'; $emotionId='35'; $task='WorkBuddy awaiting input'
+                if($info.notification_type -eq 'permission_prompt') {
+                    $state='idle'; $emotionId='35'; $attention='permission'; $task='WorkBuddy awaiting permission'
+                } elseif($info.notification_type -eq 'idle_prompt') {
+                    $state='idle'; $emotionId='35'; $attention='input'; $task='WorkBuddy awaiting answer'
                 }
                 break
             }
@@ -52,6 +56,7 @@ try {
     if(-not $state) { return }
     $payload = @{ agent=$agent; state=$state; task=$task }
     if($emotionId) { $payload.emotionId=$emotionId }
+    if($attention) { $payload.attention=$attention }
     $body = $payload | ConvertTo-Json -Compress
     foreach($port in @(4173,4174,4175)) {
         try {

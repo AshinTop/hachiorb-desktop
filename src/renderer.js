@@ -8,13 +8,14 @@
  try{ball=window.GrokBall.create(mount,{emotion:'02'});}catch(e){load.textContent='动画初始化失败';console.error(e);return;}
  load.remove();
  let current={state:'idle',emotionId:'02',task:'等待新任务',agent:'manual'};
- let gazeEnabled=true,locked=false,dragging=false,moved=false,downX=0,downY=0,lastMove=0;
+ let gazeEnabled=true,locked=false,showStatus=true,dragging=false,moved=false,downX=0,downY=0,lastMove=0;
  function updateStatus(status){
   if(!status||typeof status.emotionId!=='string')return;
-  current=status;ball.setEmotion(status.emotionId);
-  const descriptions={idle:'待机',thinking:'思考中',working:'工作中',done:'完成',error:'出错',sleep:'休息'};
-  label.textContent=`${descriptions[status.state]||'AI'} · ${status.task||''}`;
-  label.hidden=false;
+  if(current.emotionId!==status.emotionId)ball.setEmotion(status.emotionId);
+  current=status;
+  label.textContent=`${window.HachiStatus.agentName(status.agent)} · ${window.HachiStatus.stateName(status)}`;
+  label.hidden=!showStatus;
+  label.setAttribute('aria-label',label.textContent);
  }
  window.hachi.onState(updateStatus);
  window.hachi.onCursor(point=>{
@@ -24,9 +25,11 @@
  window.hachi.onSettings(settings=>{
   gazeEnabled=!!settings.followCursor;
   locked=!!settings.locked;
+  showStatus=settings.showStatus!==false;
+  label.hidden=!showStatus;
   if(!gazeEnabled)ball.clearGaze();
  });
- window.hachi.ready().then(({state,settings})=>{updateStatus(state);gazeEnabled=settings.followCursor;locked=settings.locked;});
+ window.hachi.ready().then(({state,settings})=>{showStatus=settings.showStatus!==false;updateStatus(state);gazeEnabled=settings.followCursor;locked=settings.locked;});
  mount.addEventListener('pointerdown',e=>{
   if(e.button!==0 || locked)return;
   downX=e.screenX;downY=e.screenY;moved=false;dragging=true;lastMove=0;
