@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="330" viewBox="0 0 1200 330" role="img" aria-labelledby="title desc">
+  <title id="title">Codex、Cursor、WorkBuddy 通过本机 Hook 向 HachiOrb 上报状态</title>
+  <desc id="desc">AI 工具发出 Hook 生命周期事件，经由只监听本机的状态接口更新 HachiOrb 桌面球和托盘。</desc>
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7f9fc"/>
+      <stop offset="1" stop-color="#edf3fb"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 Z" fill="#6e87b2"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="330" rx="24" fill="url(#panel)"/>
+  <g font-family="Segoe UI, Microsoft YaHei, Arial, sans-serif">
+    <text x="42" y="48" fill="#21324f" font-size="20" font-weight="700">状态事件如何到达桌面小球</text>
+    <g>
+      <rect x="42" y="82" width="290" height="176" rx="18" fill="#fff" stroke="#d8e1ef"/>
+      <text x="66" y="116" fill="#21324f" font-size="18" font-weight="700">AI 工具 Hook</text>
+      <text x="66" y="151" fill="#52627b" font-size="16">Codex　Cursor　WorkBuddy</text>
+      <text x="66" y="183" fill="#52627b" font-size="15">开始任务 · 工具调用 · 结束</text>
+      <text x="66" y="218" fill="#8290a5" font-size="14">只发送状态事件和固定短标签</text>
+    </g>
+    <path d="M 346 169 H 422" fill="none" stroke="#6e87b2" stroke-width="3" marker-end="url(#arrow)"/>
+    <g>
+      <rect x="438" y="82" width="322" height="176" rx="18" fill="#fff" stroke="#bcd2ee" stroke-width="2"/>
+      <text x="462" y="116" fill="#21324f" font-size="18" font-weight="700">HachiOrb 本机状态接口</text>
+      <text x="462" y="151" fill="#2459a6" font-size="16" font-weight="600">127.0.0.1:4173</text>
+      <text x="462" y="183" fill="#52627b" font-size="15">按工具汇总最近事件</text>
+      <text x="462" y="218" fill="#8290a5" font-size="14">不开放到局域网，不上传聊天内容</text>
+    </g>
+    <path d="M 774 169 H 850" fill="none" stroke="#6e87b2" stroke-width="3" marker-end="url(#arrow)"/>
+    <g>
+      <rect x="866" y="82" width="292" height="176" rx="18" fill="#fff" stroke="#d8e1ef"/>
+      <circle cx="912" cy="154" r="34" fill="#f8f7f2" stroke="#d8d9dc" stroke-width="5"/>
+      <ellipse cx="902" cy="153" rx="4" ry="8" fill="#202126"/>
+      <ellipse cx="922" cy="153" rx="4" ry="8" fill="#202126"/>
+      <text x="962" y="144" fill="#21324f" font-size="18" font-weight="700">小球与托盘</text>
+      <text x="962" y="174" fill="#52627b" font-size="15">显示状态和提醒</text>
+      <text x="892" y="222" fill="#8290a5" font-size="14">思考 · 执行 · 等待 · 完成</text>
+    </g>
+    <text x="42" y="296" fill="#697991" font-size="14">状态由 Hook 触发记录；HachiOrb 不读取模型的内部思维过程，也不识别同一工具里的每个并行对话。</text>
+  </g>
+</svg>
