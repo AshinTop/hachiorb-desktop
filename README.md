@@ -10,7 +10,23 @@ HachiOrb 是 Windows 桌面悬浮宠物（desktop pet），也为 **Codex、Curs
 
 > 上图为功能示意图，不是应用运行截图；状态卡片用于展示支持的事件类型。
 
-**球体选择：** 在小球右键菜单或系统托盘选择「切换球体（9 款 · Grok Ball Pro）」，可以在经典白/黑球、五月天五色球、两款卜卜之间切换。切球不会重置表情与 Agent 状态；选择会保存在用户设置中，下次启动自动恢复。
+## Grok Ball Pro：9 款球体与 42 种表情
+
+HachiOrb v1.4.0 的**源码版**接入了 [AshinTop/grok-ball-pro](https://github.com/AshinTop/grok-ball-pro) 的 SVG 动画引擎，不是 GIF 或静态图片替代。球体与表情分别控制，AI Agent 状态联动仍可独立切换表情。
+
+| 球体 | ID | 球体 | ID |
+|---|---|---|---|
+| 经典白球 | `classic` | 经典黑球 | `midnight` |
+| 阿信粉球 | `encore` | 怪兽红球 | `red` |
+| 玛莎黄球 | `sunshine` | 石头绿球 | `jade` |
+| 冠佑眼镜蓝球 | `backbeat` | 蓝色梦想倔强卜卜 | `night-seed` |
+| 胡萝卜卜卜 | `sprout` |  |  |
+
+**切换方法：** 右键桌面小球，或者右键 Windows 系统托盘中的 HachiOrb 图标 →「切换球体（9 款 · Grok Ball Pro）」→ 选择造型。已选择的球体会保存至当前用户的设置，重新启动后恢复。切换球体**不会重置当前表情，也不会改变 AI Agent 的运行状态**。
+
+表情菜单提供 **42 种表情**（原版 32 种，加上 Pro 的 `22–25`、`42–47` 共 10 种），包括思考、忙碌、完成、等待输入等。若想预览九球造型与更多动态表情，可访问 [Grok Ball Pro 演示](https://ashintop.github.io/grok-ball-pro/)。
+
+> **版本提示：** 上述功能已进入 v1.4.0 源码，但当前 GitHub Releases 的最新可下载 Windows 便携包仍是 **v1.3.1**。使用旧版 EXE 不会出现这九款球体；须自行构建 v1.4.0 源码，或等该版本正式发布后下载相应便携包。
 
 ## 功能一览
 
@@ -30,7 +46,7 @@ HachiOrb 是 Windows 桌面悬浮宠物（desktop pet），也为 **Codex、Curs
 
 ## 下载和安装 Windows 便携版
 
-从 [GitHub Releases](https://github.com/AshinTop/hachiorb-desktop/releases/latest) 下载与当前发布版本对应的 Windows x64 ZIP（v1.4.0 正式发布后文件名为 `HachiOrb-1.4.0-win32-x64.zip`）。它是**便携包**，没有安装向导。
+从 [GitHub Releases](https://github.com/AshinTop/hachiorb-desktop/releases) 下载**已经发布**的 Windows x64 ZIP，完整版本名称写在 Release 页面。截至 2026-11-20，最近一次发布的是 [v1.3.1](https://github.com/AshinTop/hachiorb-desktop/releases/tag/v1.3.1)；**v1.4.0 的九球切换功能尚未发布为 Windows 安装包**。正式发布时，预计文件名为 `HachiOrb-1.4.0-win32-x64.zip`。它是**便携包**，没有安装向导。
 
 1. 将 ZIP **完整解压**到固定目录，例如 `C:\Apps\HachiOrb`。不要直接在压缩包里运行，也不要只复制 `HachiOrb.exe`；程序运行依赖必须和 EXE 放在一起。
 2. 双击解压目录中的 `HachiOrb.exe`。桌面会出现动态表情球，系统托盘会显示 HachiOrb 图标。
@@ -65,6 +81,7 @@ Hook 仅用于传递 Agent 状态，不读取或上传提示词、聊天正文�
 - **WorkBuddy 一直显示待机：** 检查安装器是否成功注册 WorkBuddy 插件，确认 `node --version` 为 22 或更新版本，然后完全退出 WorkBuddy 再打开。
 - **连接测试通过，状态仍不变化：** 连接测试只检查本机接口。还需确认 AI 工具触发了 Hook，并在事件发生时保持 HachiOrb 运行。
 - **提示配置格式不支持：** 安装器会保留原文件；检查配置目录中的 `.hachiorb-backup-*` 备份，再按照错误信息手动合并。
+- **找不到 9 款球体菜单：** 先确认你运行的是 v1.4.0 源码构建，而非当前 v1.3.1 Release 安装包；如是从源码启动，运行 `npm run fetch:engine` 以下载经校验的 Grok Ball Pro 引擎。
 
 ## 更新 HachiOrb
 
@@ -84,6 +101,19 @@ npm run pack:win
 ```
 
 便携构建目录是 `release/HachiOrb-win32-x64`，其中的 `HachiOrb.exe` 需要与整个目录一起分发。
+
+## 测试与发布状态
+
+v1.4.0 本地源码快照已使用 **Node.js 22** 运行 `npm test`（51 项自动测试通过），覆盖 9 款球体清单、42 种表情映射、球体切换不重置 AI 状态、设置保存逻辑、Agent Hook 与拖动窗口几何逻辑等。测试通过不等同于 Windows GUI 或正式安装包完成验收。
+
+| 项目 | 状态 |
+|---|---|
+| Node.js 自动化测试 | 51 项通过（本地源码测试） |
+| Windows 透明悬浮、托盘、拖动、9 球动画与切换 | **待 Windows 真机验收** |
+| Codex / Cursor / WorkBuddy 真实事件联动 | **待用户本机端到端验证** |
+| v1.4.0 Windows Release / EXE | **尚未发布** |
+
+仓库工作流只允许**手动触发**，普通代码推送不会自动构建或发布。验收通过后，可在 [Actions](https://github.com/AshinTop/hachiorb-desktop/actions) 中运行 `Publish HachiOrb Windows Release`，使用与 `package.json` 一致的标签 `v1.4.0` 生成预发布版并人工检查。首次使用时如需配置 AI Hook，可参考 [INTEGRATIONS.md](INTEGRATIONS.md)。
 
 ## 版本更新记录
 
