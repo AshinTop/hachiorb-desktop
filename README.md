@@ -1,4 +1,4 @@
-# HachiOrb Desktop v1.1（Windows 桌面 Grok Ball）
+# HachiOrb Desktop v1.2.0（Windows 桌面 Grok Ball）
 
 这是从 HachiWatch 项目分离出的 **Windows 桌面悬浮宠物**。不需要手表、手机、DevEco、华为账号或应用市场发布。
 
@@ -90,19 +90,19 @@ Electron 作为运行容器，采用 `nodeIntegration:false`、`contextIsolation
 
 本次能在容器中运行 Node.js 自动测试和语法检查，但此环境无法下载 Windows Electron 二进制，也没有 Windows GUI。**“EXE 正常运行、置顶、透明、托盘、鼠标穿透”尚未在 Windows 真机验收**，应在你电脑上执行 `start-windows.bat` 验证。官方动画的浏览器效果可先在上游原版演示站或 `QuickPreview.html` 检查。
 
-## 不想安装 Node.js？也可用 GitHub Actions 打包
+## GitHub Releases：下载 Windows 便携版
 
-源码里已经包含 `.github/workflows/windows-portable.yml`。将本项目完整上传到自己新建的 GitHub 仓库（根目录），打开 **Actions → Build HachiOrb Windows Portable → Run workflow**。打包成功后从 Actions 结果中下载 `HachiOrb-Windows-Portable`，解压里面的 ZIP，再双击 `HachiOrb.exe`。这条路线不需要在本机安装 Node.js，但需要 GitHub 仓库及可用的 Actions 额度，而且当前工作流尚未实际跑过。
+从 [GitHub Releases](https://github.com/AshinTop/hachiorb-desktop/releases) 下载 `HachiOrb-Windows-Portable.zip`，完整解压后运行 `HachiOrb.exe`。这不是单文件 EXE，必须保留解压目录里的依赖文件。仓库目前为 Private，只能由有权限的 GitHub 账号下载。当前构建无 Windows 代码签名，SmartScreen 可能显示未知发布者。
 
+**发布新版本：** 仓库 Actions → **Publish HachiOrb Windows Release** → **Run workflow** → 输入 `v1.2.0`。工作流只允许手动触发，打包结果直接发布到 GitHub Releases，不再使用 Actions Artifact 存储。工作流本身仍消耗 Actions 运行额度；如果在仓库设置中完全禁用 Actions，需改用本地 `build-windows.bat` 构建后手动上传 ZIP。
 
-> 代码仓库：`https://github.com/AshinTop/hachiorb-desktop`。
+> 当前尚未创建或验收 `v1.2.0` 安装包。Windows 真机验收通过前，自动发布工作流会把 Release 标为预发布版（Pre-release）。
 
-
-## v1.1.1 修复：拖动放大与 Agent Hook 安装
+## v1.2.0 修复：拖动放大、复合通知器与 WorkBuddy Hook
 
 - 修复：拖动桌宠时使用固定的球体尺寸，结束拖动后校正窗口尺寸（包括不同 DPI 显示器之间移动）。
 - 修复：拖动过程不再切换更大的阴影，避免视觉上突然变大。
-- 修复：Windows Hook 安装器改用自带 PowerShell，无需 Node.js，并准确反馈安装成功/失败；不会覆盖已有第三方 notify。
+- 修复：Windows Hook 安装器提供 PowerShell 兜底，无需 Node.js，并准确反馈安装成功/失败；不会覆盖已有第三方 notify。
 - 新增：`test-agent-connection-windows.bat` 可直接检测与正在运行的 HachiOrb 的本地连接。
 - 注意：以上是源码修改与静态/Node 测试，Windows 端的 PowerShell、Electron 真机交互需要最终验证。
 
@@ -113,3 +113,7 @@ Electron 作为运行容器，采用 `nodeIntegration:false`、`contextIsolation
 - 已有配置将生成带时间戳的 `.hachiorb-backup-*` 备份。遇到复杂/无法安全解析的配置不会强行覆盖，须手动检查。
 - Windows 便携版打包额外导出 BAT/安装脚本到与 `HachiOrb.exe` 同级的目录。
 - Codex 完成事件只在任务轮次结束触发，不能实时显示所有思考/工作步骤。
+
+### WorkBuddy 桌面版
+
+新版安装器支持 `%USERPROFILE%\.workbuddy\settings.json` 的本地 Hook：`SessionStart`、`UserPromptSubmit`、`PreToolUse`、`PostToolUse`、`PermissionRequest`、`Notification`、`Stop`、`SessionEnd`。会先备份并保留原有 Hook；重复安装不会重复追加同一指令。必须完全退出 WorkBuddy 再重启，使用真实项目任务测试。仅发送状态类型、固定短标签，不读取或上传 prompt、聊天正文、工具参数或密钥。此功能基于桌面版社区实测，仍需你的 Windows 版本验证，详见 [INTEGRATIONS.md](INTEGRATIONS.md)。
