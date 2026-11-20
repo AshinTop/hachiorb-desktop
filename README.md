@@ -4,6 +4,8 @@
 
 HachiOrb 是 Windows 桌面悬浮宠物（desktop pet），也为 **Codex、Cursor、WorkBuddy 和 Grok Bot** 提供轻量的本机 AI Agent 状态显示。小球把思考、执行、等待授权和完成等 Hook 事件带到桌面，让你不用一直切换窗口也能知道 AI 工具最近在做什么。
 
+如果 HachiOrb 对你有帮助，欢迎在 GitHub 点亮 [⭐ Star](https://github.com/AshinTop/hachiorb-desktop)，让更多使用 Codex、Cursor 和 WorkBuddy 的人发现这个项目。
+
 ![HachiOrb Desktop 桌宠与 Codex、Cursor 状态卡片功能示意图](docs/images/hachiorb-hero.svg)
 
 > 上图为功能示意图，不是应用运行截图；状态卡片用于展示支持的事件类型。
