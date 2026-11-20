@@ -92,6 +92,10 @@ npm run pack:win
 
 ## 致谢
 
-感谢 [Grok Ball Pro](https://github.com/AshinTop/grok-ball-pro) 项目——这是 HachiOrb 作者维护的 SVG 表情球项目，也是 [TyCoding/grok-ball](https://github.com/TyCoding/grok-ball) 的 fork。
+感谢 [Grok Ball Pro](https://github.com/AshinTop/grok-ball-pro) 项目——这是 HachiOrb 作者维护的 SVG 表情球项目，也是 [TyCoding/grok-ball](https://github.com/TyCoding/grok-ball) 的 fork。Grok Ball Pro 自身的许可见其 [MIT License](https://github.com/AshinTop/grok-ball-pro/blob/main/LICENSE)。
 
-HachiOrb 当前使用经固定提交和校验的 Grok Ball 原版动画运行时；原始代码的 MIT 许可证与版权信息见 [`third_party/LICENSE.grok-ball`](third_party/LICENSE.grok-ball)。HachiOrb 是社区项目，不代表 xAI、OpenAI、Cursor 或 WorkBuddy 官方产品。
+HachiOrb 当前使用经固定提交和校验的 Grok Ball 原版动画运行时；这部分保留上游 `tycoding` 的 MIT 许可证与版权信息，见 [`third_party/LICENSE.grok-ball`](third_party/LICENSE.grok-ball)。HachiOrb 是社区项目，不代表 xAI、OpenAI、Cursor 或 WorkBuddy 官方产品。
+
+## 开源许可
+
+HachiOrb 自有代码以 MIT License 发布，允许使用、修改、再发布和商业使用；分发时须保留版权声明与许可文本。完整条款见根目录 [`LICENSE`](LICENSE)。第三方代码仍适用各自的许可证与版权声明，不因 HachiOrb 的许可而改变。
