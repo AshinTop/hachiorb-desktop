@@ -14,7 +14,7 @@ HachiOrb 是 Windows 桌面悬浮宠物（desktop pet），也为 **Codex、Curs
 
 | 功能 | 说明 |
 |---|---|
-| **Windows 桌面宠物** | 无边框、透明背景、悬浮小球；拖到桌面的任意位置。动画采用 [TyCoding/grok-ball](https://github.com/TyCoding/grok-ball) 原版 SVG / JavaScript 引擎。 |
+| **HachiOrb Windows 桌面宠物** | HachiOrb 提供无边框、透明背景的悬浮小球，可拖到桌面任意位置；支持鼠标跟随、轻点旋转、32 种表情和托盘设置。 |
 | **桌面交互** | 鼠标移动时眼睛跟随；轻点旋转；托盘菜单提供 32 种表情、尺寸、置顶、鼠标穿透、隐藏和退出。 |
 | **AI Agent 状态监控** | 通过 Hook 接入 Codex、Cursor、WorkBuddy；支持 thinking、working、等待授权、完成和错误等状态事件。Grok Bot 可显式发送状态。 |
 | **多工具并行状态** | 不同 AI 工具分别保留最近状态；托盘可查看各工具的最近上报记录。 |
