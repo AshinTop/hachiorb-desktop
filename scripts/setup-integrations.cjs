@@ -9,6 +9,7 @@ const crypto=require('node:crypto');
 const {installCodex,stage,BASE_DIR}=require('./codex-notify-config.cjs');
 
 const CODEX_HOOK_EVENTS=Object.freeze(['UserPromptSubmit','PreToolUse','PostToolUse','PermissionRequest','SubagentStart','SubagentStop','Stop','Interrupt','SessionEnd']);
+const CODEX_INLINE_HOOK_EVENTS=new Set(['PreToolUse','PermissionRequest','PostToolUse','PreCompact','PostCompact','UserPromptSubmit','SubagentStop','Stop','PreModelRequest','PostModelRequest','Interrupt','SessionStart','SubagentStart','SessionEnd']);
 function quoteCommandArg(value){
  const text=String(value);
  if(text.includes('"'))throw Error('Codex hook command path contains an unsupported quote');
@@ -20,7 +21,7 @@ function configDisablesHooks(file){
  for(const raw of fs.readFileSync(file,'utf8').split(/\r?\n/)){
   const line=raw.replace(/#.*$/,'').trim();
   const table=/^\[\[?\s*([^\]]+?)\s*\]\]?$/.exec(line);
-  if(table){section=table[1].trim();if(/^hooks(?:\.|$)/i.test(section))throw Error('Codex config.toml already declares hooks; merge HachiOrb into that hooks source to avoid duplicate hook layers');continue;}
+  if(table){section=table[1].trim();const inline=/^hooks\.([^.]+)(?:\.|$)/i.exec(section);if(inline&&[...CODEX_INLINE_HOOK_EVENTS].some(event=>event.toLowerCase()===inline[1].toLowerCase()))throw Error('Codex config.toml already declares hooks; merge HachiOrb into that hooks source to avoid duplicate hook layers');continue;}
   if(section.toLowerCase()==='features'&&/^hooks\s*=\s*false(?:\s|$)/i.test(line))return true;
   if(section.toLowerCase()==='features'&&/^codex_hooks\s*=\s*false(?:\s|$)/i.test(line))return true;
  }

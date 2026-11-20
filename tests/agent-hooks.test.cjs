@@ -75,6 +75,23 @@ test('Codex lifecycle hook reports a fixed status and never echoes prompt JSON',
   assert.equal(events[0].task,'Codex 正在思考');assert.ok(!JSON.stringify(events[0]).includes('SECRET'));
  }finally{await server.close();}
 });
+test('Codex lifecycle hook reports before stdin closes',async()=>{
+ let resolveEvent;const delivered=new Promise(resolve=>{resolveEvent=resolve;});
+ const events=[];const server=createBridge(s=>{events.push(s);resolveEvent(s)});const port=await server.listen(0);
+ const child=spawn(process.execPath,[path.join(__dirname,'..','integrations/codex-hook.cjs'),'UserPromptSubmit'],{stdio:['pipe','pipe','pipe'],env:{...process.env,HACHI_STATUS_PORTS:String(port)}});
+ let stdout='',stderr='';child.stdout.on('data',v=>stdout+=v);child.stderr.on('data',v=>stderr+=v);
+ try{
+  child.stdin.write(JSON.stringify({prompt:'SECRET PROMPT'}));
+  const event=await Promise.race([delivered,new Promise((_,reject)=>setTimeout(()=>reject(Error('Hook waited for stdin EOF')),1200))]);
+  assert.equal(event.agent,'codex');assert.equal(event.state,'thinking');
+  assert.ok(!JSON.stringify(event).includes('SECRET'));
+ }finally{
+  child.stdin.end();
+  if(child.exitCode===null)await new Promise(resolve=>child.once('close',resolve));
+  await server.close();
+ }
+ assert.equal(stdout,'');assert.equal(stderr,'');
+});
 test('Grok Bot explicit event rejects unknown state',async()=>{
  const result=await run('integrations/grok-bot-event.cjs',['executing']);assert.equal(result.code,2);
 });

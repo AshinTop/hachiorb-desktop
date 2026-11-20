@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const os=require('node:os');
 const root=path.resolve(__dirname,'..');
-const {decodeArray,inspectNotify,installCodex,MANIFEST}=require('../scripts/codex-notify-config.cjs');
+const {decodeArray,inspectNotify,installCodex,MANIFEST,ENTRY}=require('../scripts/codex-notify-config.cjs');
 const {setupCodexHooks,CODEX_HOOK_EVENTS}=require('../scripts/setup-integrations.cjs');
 const {dispatch,readOriginal}=require('../integrations/codex-notify-dispatcher.cjs');
 function temp(){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'hachiorb-notify-test-'));return {dir,home:path.join(dir,'home'),stableDir:path.join(dir,'AppData Local','HachiOrb','hooks')};}
@@ -65,6 +65,15 @@ test('Legacy HachiOrb direct hook is upgraded without treating it as another too
  const result=install(ctx);assert.equal(result.status,'installed');assert.equal(fixture(ctx).originalNotify,null);
  fs.rmSync(ctx.dir,{recursive:true,force:true});
 });
+test('Codex installer preserves its desktop notify wrapper around HachiOrb',()=>{
+ const ctx=temp(),file=path.join(ctx.home,'.codex','config.toml');fs.mkdirSync(path.dirname(file),{recursive:true});
+ const wrapped=['C:\\Program Files\\OpenAI\\codex-computer-use.exe','turn-ended','--previous-notify',JSON.stringify(['node',path.join(ctx.stableDir,ENTRY)])];
+ const before=`notify = ${JSON.stringify(wrapped)}\n`;fs.writeFileSync(file,before);
+ const result=install(ctx);
+ assert.equal(result.status,'wrapped-by-codex-desktop');assert.equal(fs.readFileSync(file,'utf8'),before);
+ assert.ok(fs.existsSync(path.join(ctx.stableDir,'codex-hook.cjs')));
+ fs.rmSync(ctx.dir,{recursive:true,force:true});
+});
 test('Codex lifecycle installer merges hooks, preserves other handlers, and is idempotent',()=>{
  const ctx=temp(),dir=path.join(ctx.home,'.codex'),file=path.join(dir,'hooks.json');
  fs.mkdirSync(dir,{recursive:true});
@@ -95,6 +104,15 @@ test('Codex lifecycle installer refuses disabled hooks or inline hooks without c
  fs.writeFileSync(config,'[[hooks.UserPromptSubmit]]\n');
  assert.throws(()=>setupCodexHooks(options),/already declares hooks/);
  assert.equal(fs.existsSync(path.join(dir,'hooks.json')),false);
+ fs.rmSync(ctx.dir,{recursive:true,force:true});
+});
+test('Codex lifecycle installer accepts Codex-generated hooks.state tables',()=>{
+ const ctx=temp(),dir=path.join(ctx.home,'.codex'),config=path.join(dir,'config.toml');fs.mkdirSync(dir,{recursive:true});
+ fs.writeFileSync(config,"[hooks.state.'C:\\\\Users\\\\user\\\\.codex\\\\hooks.json:user_prompt_submit:0:0']\nenabled = true\n");
+ const result=setupCodexHooks({home:ctx.home,root,stableDir:ctx.stableDir,codexHome:dir});
+ assert.equal(result.status,'installed');
+ const data=JSON.parse(fs.readFileSync(path.join(dir,'hooks.json'),'utf8'));
+ assert.ok(data.hooks.UserPromptSubmit.flatMap(group=>group.hooks).some(hook=>hook.command.includes('codex-hook.cjs')));
  fs.rmSync(ctx.dir,{recursive:true,force:true});
 });
 test('Dispatcher invokes original first and then HachiOrb with identical raw JSON',async()=>{

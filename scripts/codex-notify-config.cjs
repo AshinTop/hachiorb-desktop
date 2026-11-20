@@ -94,6 +94,13 @@ function isManaged(command, stableDir=BASE_DIR){
  if(!Array.isArray(command))return false;
  return command.some(v=>typeof v==='string' && /codex-notify-dispatcher\.(?:cjs|ps1)$/i.test(v) && path.normalize(v).toLowerCase()===path.normalize(path.join(stableDir,path.extname(v).toLowerCase()==='.ps1'?'codex-notify-dispatcher.ps1':ENTRY)).toLowerCase());
 }
+/** Codex Desktop may wrap notify with --previous-notify; leave that wrapper intact. */
+function isWrappedNotify(command,stableDir=BASE_DIR){
+ if(!Array.isArray(command)||!command.some(v=>v==='--previous-notify'))return false;
+ const normalized=command.filter(v=>typeof v==='string').join('\n').replace(/\\+/g,'/').toLowerCase();
+ const entry=path.join(stableDir,ENTRY).replace(/\\/g,'/').toLowerCase();
+ return normalized.includes(entry);
+}
 function isLegacy(command, stableDir=BASE_DIR){
  if(!Array.isArray(command))return false;
  return command.some(v=>{
@@ -128,6 +135,10 @@ function installCodex({root=path.resolve(__dirname,'..'),home=os.homedir(),codex
  const before=fs.existsSync(file)?fs.readFileSync(file,'utf8'):'';
  const parsed=inspectNotify(before), current=parsed.notify?.args||null;
  const managed=current && isManaged(current,stableDir);
+ if(current&&!managed&&isWrappedNotify(current,stableDir)){
+  stage(root,stableDir);
+  return {status:'wrapped-by-codex-desktop',file};
+ }
  if(current && !managed && current.some(x=>/codex-notify-dispatcher\.(cjs|ps1)/i.test(x)))throw Error('Unknown Codex dispatcher found; refusing to nest or replace it');
  let saved=null;
  if(fs.existsSync(manifestPath)){
@@ -153,4 +164,4 @@ function installCodex({root=path.resolve(__dirname,'..'),home=os.homedir(),codex
  }
  return {status:'installed',file,configBackup,manifestBackup,original};
 }
-module.exports={BASE_DIR,MANIFEST,ENTRY,decodeArray,inspectNotify,insertNotify,isManaged,isLegacy,stage,installCodex};
+module.exports={BASE_DIR,MANIFEST,ENTRY,decodeArray,inspectNotify,insertNotify,isManaged,isWrappedNotify,isLegacy,stage,installCodex};

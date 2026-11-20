@@ -95,6 +95,7 @@ function Install-Codex {
     if($null -ne $original) { Write-Host '[OK] Previous Codex notify stored and will run first.' }
 }
 function Install-CodexHooks {
+    $knownHookEvents = @('PreToolUse','PermissionRequest','PostToolUse','PreCompact','PostCompact','UserPromptSubmit','SubagentStop','Stop','PreModelRequest','PostModelRequest','Interrupt','SessionStart','SubagentStart','SessionEnd')
     $configFile = Join-Path $codexFolder 'config.toml'
     if(Test-Path -LiteralPath $configFile -PathType Leaf) {
         $section = ''
@@ -102,7 +103,7 @@ function Install-CodexHooks {
             $line = ($rawLine -replace '#.*$','').Trim()
             if($line -match '^\[\[?\s*([^\]]+?)\s*\]\]?$') {
                 $section = $Matches[1].Trim()
-                if($section -match '^(?i:hooks)(\.|$)') { throw 'Codex config.toml already declares hooks; merge HachiOrb into that hooks source to avoid duplicate hook layers.' }
+                if($section -match '^(?i:hooks)\.([^.]+)(\.|$)' -and $knownHookEvents -contains $Matches[1]) { throw 'Codex config.toml already declares hooks; merge HachiOrb into that hooks source to avoid duplicate hook layers.' }
                 continue
             }
             if($section -ieq 'features' -and $line -match '^(hooks|codex_hooks)\s*=\s*false(?:\s|$)') {
