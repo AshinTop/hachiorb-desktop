@@ -4,6 +4,7 @@ const path=require('node:path');
 const fs=require('node:fs');
 const {createBridge,EMOTION_STATE}=require('./bridge.cjs');
 const {verified}=require('../scripts/bootstrap.cjs');
+const {clampPosition,dragPosition,fixedBounds}=require('./drag-geometry.cjs');
 const ROOT=path.resolve(__dirname,'..');
 const UPSTREAM=path.join(ROOT,'vendor/grok-ball.js');
 const SIZES=[180,220,260,300,360,420];
@@ -29,7 +30,7 @@ function loadSettings(){
 }
 function boundPosition(x,y,size){
  const p=screen.getDisplayNearestPoint({x,y});const a=p.workArea;
- return {x:Math.max(a.x,Math.min(x,a.x+a.width-size)),y:Math.max(a.y,Math.min(y,a.y+a.height-size))};
+ return clampPosition(x,y,size,a);
 }
 function defaultPosition(){const a=screen.getPrimaryDisplay().workArea;return {x:a.x+a.width-settings.size-28,y:a.y+a.height-settings.size-48}}
 function sendState(state){if(windowPet&&!windowPet.isDestroyed())windowPet.webContents.send('hachi:state',state);refreshTray();}
@@ -90,14 +91,20 @@ function setupIPC(){
  ipcMain.on('hachi:move-tick',()=>{
   if(!dragSession||settings.locked||!windowPet)return;
   const p=screen.getCursorScreenPoint(),start=dragSession;
-  const desiredX=start.startBounds.x+p.x-start.startCursor.x;
-  const desiredY=start.startBounds.y+p.y-start.startCursor.y;
-  const bounded=boundPosition(desiredX,desiredY,settings.size);
+  const area=screen.getDisplayNearestPoint(p).workArea;
+  const bounded=dragPosition(start.startCursor,start.startBounds,p,settings.size,area);
   windowPet.setPosition(bounded.x,bounded.y);
  });
  ipcMain.on('hachi:move-end',()=>{
   if(!windowPet)return;dragSession=null;
-  const p=windowPet.getBounds();settings.x=p.x;settings.y=p.y;saveSettings();
+  // Per-monitor Windows DPI transitions can change BrowserWindow bounds while
+  // moving. Enforce the user's selected DIP size without affecting its position.
+  const b=windowPet.getBounds();
+  const area=screen.getDisplayNearestPoint({x:b.x+b.width/2,y:b.y+b.height/2}).workArea;
+  const expected=fixedBounds(b,settings.size,area);
+  if(b.x!==expected.x || b.y!==expected.y || b.width!==expected.width || b.height!==expected.height)
+    windowPet.setBounds(expected,false);
+  settings.x=expected.x;settings.y=expected.y;saveSettings();
  });
  ipcMain.on('hachi:click-through',(_e,v)=>{
   if(!windowPet||settings.locked)return;
@@ -130,7 +137,12 @@ async function setupApp(){
  windowPet.on('close',e=>{
   if(!app.isQuitting){e.preventDefault();windowPet.hide();}
  });
- windowPet.on('moved',()=>{const b=windowPet.getBounds();settings.x=b.x;settings.y=b.y;saveSettings()});
+ windowPet.on('moved',()=>{
+   // Don't rewrite preferences on every drag frame. The final drag-end handler
+   // persists the position and normalizes the window size.
+   if(dragSession)return;
+   const b=windowPet.getBounds();settings.x=b.x;settings.y=b.y;saveSettings();
+ });
  windowPet.once('ready-to-show',()=>{windowPet.showInactive();applySettings();});
  await windowPet.loadFile(path.join(__dirname,'index.html'));
  tray=new Tray(nativeImage.createFromPath(path.join(ROOT,'assets/tray.png')));

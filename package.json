@@ -11,7 +11,7 @@
     "fetch:engine": "node scripts/bootstrap.cjs",
     "test": "node --test tests/*.test.cjs",
     "setup:agents": "node scripts/setup-integrations.cjs --all",
-    "pack:win": "electron-packager . HachiOrb --platform=win32 --arch=x64 --out=release --overwrite --asar --icon=assets/app.ico --prune=true --ignore=^/release$ --ignore=^/tests$ --ignore=^/examples$"
+    "pack:win": "electron-packager . HachiOrb --platform=win32 --arch=x64 --out=release --overwrite --asar --icon=assets/app.ico --prune=true --ignore=^/release$ --ignore=^/tests$ --ignore=^/examples$ && node scripts/stage-portable-hooks.cjs"
   },
   "devDependencies": {
     "electron": "45.4.1",

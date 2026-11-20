@@ -22,4 +22,23 @@ function cursorEvent(kind,input={}){
   default: return null;
  }
 }
-module.exports={codexEvent,cursorEvent,briefProject};
+/** WorkBuddy Desktop hook adapter: use only event metadata, never prompt/tool payload. */
+function workbuddyEvent(kind,input={}){
+  const base={agent:'workbuddy'};
+  switch(kind){
+    case 'SessionStart': return {...base,state:'idle',task:'WorkBuddy 会话已启动'};
+    case 'UserPromptSubmit': return {...base,state:'thinking',task:'WorkBuddy 正在思考'};
+    case 'PreToolUse':
+    case 'PostToolUse': return {...base,state:'working',task:'WorkBuddy 正在执行工具'};
+    case 'PermissionRequest': return {...base,state:'idle',emotionId:'35',task:'WorkBuddy 等待授权'};
+    case 'Notification': {
+      if(input?.notification_type==='permission_prompt')return {...base,state:'idle',emotionId:'35',task:'WorkBuddy 等待权限确认'};
+      if(input?.notification_type==='idle_prompt')return {...base,state:'idle',emotionId:'35',task:'WorkBuddy 等待输入'};
+      return null;
+    }
+    case 'Stop': return {...base,state:'done',task:'WorkBuddy 本轮任务已结束'};
+    case 'SessionEnd': return {...base,state:'idle',task:'WorkBuddy 会话已结束'};
+    default: return null;
+  }
+}
+module.exports={codexEvent,cursorEvent,workbuddyEvent,briefProject};

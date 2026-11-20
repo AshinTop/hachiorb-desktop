@@ -1,47 +1,96 @@
 'use strict';
-/** Non-destructive user-level installation of official Codex/Cursor hooks. */
-const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
-const root=path.resolve(__dirname,'..');
-const home=os.homedir();
-const hook=path.join(root,'integrations','cursor-hook.cjs');
-const cmd=name=>`node "${hook.replace(/\\/g,'/')}" ${name}`;
-function setupCursor(){
+/** Windows user-level installer: preserve existing Codex notify through dispatcher.
+ * Never modify Codex itself. Existing config is snapshotted before a change.
+ */
+const fs=require('node:fs');
+const path=require('node:path');
+const os=require('node:os');
+const {installCodex,stage,BASE_DIR}=require('./codex-notify-config.cjs');
+
+function setupCursor({home=os.homedir(),root=path.resolve(__dirname,'..'),stableDir=BASE_DIR}={}) {
  const file=path.join(home,'.cursor','hooks.json');let data={version:1,hooks:{}};
  if(fs.existsSync(file)){
-  try{data=JSON.parse(fs.readFileSync(file,'utf8'));}catch(e){throw Error('Existing Cursor hooks.json could not be parsed; nothing was changed: '+e.message);}
+  try{data=JSON.parse(fs.readFileSync(file,'utf8'))}catch(e){throw Error('Existing Cursor hooks.json is not valid JSON; unchanged: '+e.message)}
  }
- if(!data||typeof data!=='object'||Array.isArray(data))throw Error('Invalid Cursor config; not changing file');
- if(data.version!==1)throw Error('Unsupported Cursor hooks schema version: '+data.version);
- if(!data.hooks||typeof data.hooks!=='object')data.hooks={};
+ if(!data||typeof data!=='object'||Array.isArray(data))throw Error('Cursor hooks.json must be an object');
+ if(![1,undefined].includes(data.version))throw Error('Unsupported Cursor hooks schema; unchanged');
+ if(!data.hooks)data.hooks={};
+ if(typeof data.hooks!=='object'||Array.isArray(data.hooks))throw Error('Cursor hooks must be an object; unchanged');
+ const handler=path.join(stableDir,'agent-status.ps1');
+ let changed=false;
  for(const event of ['beforeSubmitPrompt','afterAgentThought','afterFileEdit','stop','sessionEnd']){
-  if(!Array.isArray(data.hooks[event]))data.hooks[event]=[];
-  const desired=cmd(event);
-  if(!data.hooks[event].some(item=>item&&item.command===desired))data.hooks[event].push({command:desired});
+  let entries=data.hooks[event];
+  if(entries!=null&&!Array.isArray(entries))throw Error('Cursor '+event+' hooks must be an array; unchanged');
+  const command=`powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${handler}" -Event ${event}`;
+  const existing=(entries||[]).filter(item=>!item?.command || !/hachiorb[^"\r\n]*cursor-hook\.cjs/i.test(item.command));
+  if(!existing.some(item=>item?.command===command))existing.push({command});
+  if(JSON.stringify(entries)!==JSON.stringify(existing)){data.hooks[event]=existing;changed=true;}
  }
+ if(data.version==null){data.version=1;changed=true;}
+ stage(root,stableDir);
+ if(!changed)return {status:'already-installed',file};
  fs.mkdirSync(path.dirname(file),{recursive:true});
- if(fs.existsSync(file))fs.copyFileSync(file,file+'.hachiorb-backup');
- fs.writeFileSync(file,JSON.stringify(data,null,2)+'\n');
- console.log('✓ Cursor hooks installed globally:',file);
- console.log('  Previous config backup: '+file+'.hachiorb-backup');
+ if(fs.existsSync(file))fs.copyFileSync(file,file+'.hachiorb-backup-'+Date.now());
+ const temp=file+'.hachiorb-tmp-'+Date.now();
+ try{fs.writeFileSync(temp,JSON.stringify(data,null,2)+'\n');fs.renameSync(temp,file);}finally{if(fs.existsSync(temp))fs.unlinkSync(temp);}
+ return {status:'installed',file};
 }
-function setupCodex(){
- const file=path.join(home,'.codex','config.toml');let content='';
- if(fs.existsSync(file))content=fs.readFileSync(file,'utf8');
- // Never overwrite another tool's notify command. Codex config supports only one notify entry.
- if(/^\s*notify\s*=/m.test(content)){
-  console.log('! Found existing Codex notify. Preserved without changes; merge manually:');
-  console.log('  notify = '+JSON.stringify(['node',path.join(root,'integrations','codex-notify.cjs')]));
-  return;
+const WORKBUDDY_EVENTS=Object.freeze(['SessionStart','UserPromptSubmit','PreToolUse','PostToolUse','PermissionRequest','Notification','Stop','SessionEnd']);
+/** Desktop WorkBuddy (not CodeBuddy CLI): safely extend ~/.workbuddy/settings.json. */
+function setupWorkBuddy({home=os.homedir(),root=path.resolve(__dirname,'..'),stableDir=BASE_DIR}={}){
+ const file=path.join(home,'.workbuddy','settings.json');
+ let data={hooks:{}};
+ if(fs.existsSync(file)){
+  try{data=JSON.parse(fs.readFileSync(file,'utf8'))}
+  catch(e){throw Error('WorkBuddy settings.json is invalid JSON; unchanged: '+e.message)}
  }
- const snippet='notify = '+JSON.stringify(['node',path.join(root,'integrations','codex-notify.cjs')])+'\n';
+ if(!data || typeof data!=='object'||Array.isArray(data))throw Error('WorkBuddy settings.json must be a JSON object; unchanged');
+ if(data.hooks!=null && (typeof data.hooks!=='object'||Array.isArray(data.hooks)))throw Error('WorkBuddy hooks must be an object; unchanged');
+ if(!data.hooks)data.hooks={};
+ const handler=path.join(stableDir,'agent-status.ps1');
+ let changed=false;
+ for(const event of WORKBUDDY_EVENTS){
+  const entries=data.hooks[event];
+  if(entries!=null&&!Array.isArray(entries))throw Error('WorkBuddy '+event+' hooks must be an array; unchanged');
+  const command=`powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${handler}" -Event workbuddy:${event}`;
+  const groups=entries||[];
+  for(const group of groups){
+   if(!group||typeof group!=='object'||Array.isArray(group)||!Array.isArray(group.hooks))
+    throw Error('WorkBuddy '+event+' contains an unsupported hook group; unchanged');
+  }
+  if(!groups.some(group=>group.hooks.some(hook=>hook&&hook.type==='command'&&hook.command===command))){
+   data.hooks[event]=[...groups,{hooks:[{type:'command',command,timeout:5}]}];changed=true;
+  }
+ }
+ stage(root,stableDir);
+ if(!changed)return {status:'already-installed',file};
  fs.mkdirSync(path.dirname(file),{recursive:true});
- if(fs.existsSync(file))fs.copyFileSync(file,file+'.hachiorb-backup');
- fs.writeFileSync(file,snippet+content);
- console.log('✓ Codex agent-turn-complete notify configured:',file);
- console.log('  Note: Codex officially only emits turn-complete here (not live working stages).');
+ if(fs.existsSync(file))fs.copyFileSync(file,file+'.hachiorb-backup-'+Date.now());
+ const temp=file+'.hachiorb-tmp-'+process.pid+'-'+Date.now();
+ try{fs.writeFileSync(temp,JSON.stringify(data,null,2)+'\n');fs.renameSync(temp,file)}
+ finally{if(fs.existsSync(temp))fs.unlinkSync(temp)}
+ return {status:'installed',file};
 }
-try{
- const args=new Set(process.argv.slice(2));
- if(args.has('--all')||args.size===0){setupCodex();setupCursor();}
- else {if(args.has('--codex'))setupCodex();if(args.has('--cursor'))setupCursor();}
-}catch(e){console.error('Setup failed:',e.message);process.exitCode=1;}
+function setupAll(args=new Set(process.argv.slice(2))){
+ const wantsAll=args.has('--all')||args.size===0;
+ let errors=0;
+ if(wantsAll||args.has('--codex')){
+  try{
+   const result=installCodex();
+   console.log('[OK] Codex notify dispatcher:',result.status);
+   if(result.original)console.log('     Original notify preserved and forwarded first.');
+   console.log('     Codex emits agent-turn-complete only.');
+  }catch(e){errors++;console.error('[ERROR] Codex config unchanged:',e.message);}
+ }
+ if(wantsAll||args.has('--cursor')){
+  try{const result=setupCursor();console.log('[OK] Cursor hooks:',result.status)}
+  catch(e){errors++;console.error('[ERROR] Cursor config unchanged:',e.message)}
+ }
+ if(wantsAll||args.has('--workbuddy')){
+  try{const result=setupWorkBuddy();console.log('[OK] WorkBuddy Desktop hooks:',result.status)}
+  catch(e){errors++;console.error('[ERROR] WorkBuddy config unchanged:',e.message)}
+ }
+ return errors===0?0:1;
+}
+if(require.main===module)process.exitCode=setupAll();
+module.exports={setupCursor,setupWorkBuddy,setupAll,WORKBUDDY_EVENTS};

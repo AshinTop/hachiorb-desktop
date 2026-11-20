@@ -14,6 +14,7 @@ if not exist "node_modules\electron\dist\electron.exe" (
 )
 call npm run pack:win
 if errorlevel 1 (pause & exit /b 1)
+rem npm run pack:win already stages all required hook installation files.
 echo.
 echo Build ready: release\HachiOrb-win32-x64\HachiOrb.exe
 echo Copy the ENTIRE HachiOrb-win32-x64 folder when sharing.
